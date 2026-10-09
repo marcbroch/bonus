@@ -45,3 +45,22 @@ jobs:
           # Kein --delete: Datenbank (data/) und Fotos (uploads/) auf dem Server bleiben unangetastet.
           EXCLUDES="-X .git/ -X .github/ -X .gitignore -X CLAUDE.md -X ANLEITUNG.txt -X EINRICHTUNG-IONOS.md -X data/*.sqlite*"
           lftp -c "set sftp:auto-confirm yes; set net:max-retries 3; set net:timeout 30; open -u '$SFTP_USER' --env-password 'sftp://$SFTP_HOST'; mirror --reverse --verbose $EXCLUDES ./ '$SFTP_REMOTE_DIR'"
+
+      - name: Live-Seite prüfen
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+        run: |
+          sleep 3
+          URL="https://brochhaus.name/bonus/index.php?p=login"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL" || echo 000)
+          echo "Anmeldeseite: HTTP $code"
+          # Letzte Einträge aus dem Fehlerprotokoll der App anzeigen (falls vorhanden)
+          echo "--- data/error.log (letzte Einträge) ---"
+          lftp -c "set sftp:auto-confirm yes; set net:max-retries 2; open -u '$SFTP_USER' --env-password 'sftp://$SFTP_HOST'; cat '$SFTP_REMOTE_DIR/data/error.log'" 2>/dev/null | tail -n 15 || true
+          if [ "$code" != "200" ]; then
+            echo "::error::Die Live-Seite antwortet mit HTTP $code statt 200."
+            exit 1
+          fi

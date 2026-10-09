@@ -363,10 +363,10 @@ function settings_tasks(): void {
       <form method="post" class="card setting taskedit">
         <?= csrf_field() ?><input type="hidden" name="s" value="tasks"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
         <div class="te-top">
-          <?= icon_img($t['icon'], 'ticon big js-icon-preview') ?>
+          <?= icon_img($t['icon'] ?? guess_icon($t['name']), 'ticon big js-icon-preview') ?>
           <div class="grow">
-            <label>Stichwort<input name="keyword" value="<?= h($t['keyword']) ?>" maxlength="30" required></label>
-            <label>Bild<?= icon_select((string)$t['icon']) ?></label>
+            <label>Stichwort<input name="keyword" value="<?= h($t['keyword'] ?? '') ?>" maxlength="30" required></label>
+            <label>Bild<?= icon_select((string)($t['icon'] ?? guess_icon($t['name']))) ?></label>
           </div>
         </div>
         <label>Beschreibung<input name="name" value="<?= h($t['name']) ?>" required></label>

@@ -99,16 +99,27 @@ function init_schema(PDO $pdo): void {
     // Migration für bestehende Datenbanken: Profilbild je Person
     $cols = array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name');
     if (!in_array('avatar', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN avatar TEXT');
-    // Migration: Stichwort und Bild je Aufgabe, für vorhandene Aufgaben automatisch vorschlagen
-    $cols = array_column($pdo->query('PRAGMA table_info(tasks)')->fetchAll(), 'name');
-    if (!in_array('icon', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN icon TEXT');
-    if (!in_array('keyword', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN keyword TEXT');
-    $missing = $pdo->query('SELECT id, name, icon, keyword FROM tasks WHERE icon IS NULL OR keyword IS NULL')->fetchAll();
-    $upd = $pdo->prepare('UPDATE tasks SET icon=?, keyword=? WHERE id=?');
-    foreach ($missing as $t) {
-        $icon = $t['icon'] ?: guess_icon($t['name']);
-        $upd->execute([$icon, $t['keyword'] ?: guess_keyword($t['name'], $icon), $t['id']]);
+    // Migration: Stichwort und Bild je Aufgabe, für vorhandene Aufgaben automatisch vorschlagen.
+    // Darf die App nie lahmlegen: Bei einem Fehler wird er protokolliert und die App läuft weiter
+    // (die Bilder werden dann über den Aufgabennamen gewählt).
+    try {
+        $cols = array_column($pdo->query('PRAGMA table_info(tasks)')->fetchAll(), 'name');
+        if (!in_array('icon', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN icon TEXT');
+        if (!in_array('keyword', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN keyword TEXT');
+        $missing = $pdo->query('SELECT id, name, icon, keyword FROM tasks WHERE icon IS NULL OR keyword IS NULL')->fetchAll();
+        $upd = $pdo->prepare('UPDATE tasks SET icon=?, keyword=? WHERE id=?');
+        foreach ($missing as $t) {
+            $icon = $t['icon'] ?: guess_icon((string)$t['name']);
+            $upd->execute([$icon, $t['keyword'] ?: guess_keyword((string)$t['name'], $icon), $t['id']]);
+        }
+    } catch (Throwable $e) {
+        app_log('Migration Aufgaben: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());
     }
+}
+
+// Fehler in data/error.log schreiben (Ordner ist von außen gesperrt)
+function app_log(string $msg): void {
+    @file_put_contents(DATA_DIR . '/error.log', date('Y-m-d H:i:s') . ' ' . $msg . "\n", FILE_APPEND);
 }
 
 function is_installed(): bool {
@@ -290,7 +301,7 @@ function task_info(?int $taskId): ?array {
     static $tasks = null;
     if ($tasks === null) {
         $tasks = [];
-        foreach (db()->query('SELECT id, name, keyword, icon FROM tasks')->fetchAll() as $t) $tasks[(int)$t['id']] = $t;
+        foreach (db()->query('SELECT * FROM tasks')->fetchAll() as $t) $tasks[(int)$t['id']] = $t;
     }
     return $taskId !== null ? ($tasks[$taskId] ?? null) : null;
 }
