@@ -36,6 +36,19 @@ for pg in "p=home" "p=home&w=-2" "p=submit" "p=submit&t=1" "p=rewards" "p=accoun
 grep -q "Hallo Bent" <(curl -s -b "$K" "$BASE?p=home") || { echo "FEHLER  Kind-Anmeldung hat nicht geklappt"; FAIL=1; }
 get "$P" "p=password"
 
+# Konfetti-Moment und Sammelalbum: Eltern tragen eine Aufgabe ein, das Kind sieht danach die Karte
+echo "/9j/4AAQSkZJRgABAQAAAAAAAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAIAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAABAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCsAmBv/9k=" | base64 -d > "$TMP/foto.jpg"
+sleep 1
+get "$P" "p=admin_enter"
+post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_id=1" -F "task_id=1" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
+get "$K" "p=home"
+if grep -q "Juhu" "$TMP/page" && grep -q "+10" "$TMP/page" && grep -q "Erster Schritt" "$TMP/page"; then echo "ok      Konfetti-Karte mit Punkten und neuem Sticker"
+else echo "FEHLER  Konfetti-Karte fehlt nach Bestätigung"; FAIL=1; fi
+get "$K" "p=home"
+if grep -q "js-celebrate" "$TMP/page"; then echo "FEHLER  Konfetti-Karte erscheint ein zweites Mal"; FAIL=1; else echo "ok      Konfetti-Karte nur einmal"; fi
+get "$K" "p=account"
+grep -q "Mein Sammelalbum" "$TMP/page" && grep -q "1 von 21 Stickern" "$TMP/page" && echo "ok      Sammelalbum" || { echo "FEHLER  Sammelalbum fehlt oder zählt falsch"; FAIL=1; }
+
 # Passwort ändern: falsches altes Passwort wird abgelehnt, richtiges klappt, neues gilt beim Anmelden
 get "$K" "p=password"
 post "$K" "p=password" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "old=falsch" -d "new=neu4567" -d "new2=neu4567"

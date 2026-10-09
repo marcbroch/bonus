@@ -366,3 +366,59 @@ details[open].avatars summary h2::after { content: "▴"; }
 .te-top .ticon.big { width: 76px; height: 76px; }
 .te-top label { margin: .3rem 0; }
 .te-active { align-self: end; margin-bottom: 1rem; }
+
+/* ---------- Sticker / Sammelalbum ---------- */
+.sticker { --rim: #3cbf5b; --rim2: #2a9445; position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 76px; height: 76px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 50% 35%, #fff 0 52%, #fff7e0 53% 60%, var(--rim) 61% 100%);
+  border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--rim2), 0 6px 12px rgba(0,0,0,.15); }
+.sticker::before, .sticker::after { content: ""; position: absolute; bottom: -12px; width: 16px; height: 22px; background: var(--rim2);
+  border: 2px solid var(--ink); z-index: -1; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); }
+.sticker::before { left: 18px; transform: rotate(14deg); } .sticker::after { right: 18px; transform: rotate(-14deg); }
+.sticker.green  { --rim: #7cd67f; --rim2: #2a9445; }
+.sticker.blue   { --rim: #7cc6f2; --rim2: #1a76b5; }
+.sticker.orange { --rim: #ffb35c; --rim2: #d96a00; }
+.sticker.purple { --rim: #c3a3f2; --rim2: #7b3fd0; }
+.sticker.bronze { --rim: #e2a46b; --rim2: #a8622a; }
+.sticker.silver { --rim: #d5dde5; --rim2: #8a97a5; }
+.sticker.gold   { --rim: #ffd23f; --rim2: #d99a00; }
+.sticker .stemoji { font-size: 2rem; line-height: 1; }
+.sticker .sticon { width: 50px; height: 50px; }
+.sticker .tier { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-size: .62rem; font-weight: 700;
+  background: var(--rim2); color: #fff; border: 2px solid var(--ink); border-radius: 99px; padding: 0 .4rem; white-space: nowrap; z-index: 1; }
+.sticker.locked { filter: grayscale(1); opacity: .35; }
+.sticker.small { width: 52px; height: 52px; border-width: 2px; }
+.sticker.small .stemoji { font-size: 1.4rem; } .sticker.small .sticon { width: 34px; height: 34px; }
+.sticker.small::before, .sticker.small::after { display: none; }
+.sticker.small .tier { font-size: .5rem; bottom: -7px; }
+.stickers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem .5rem; margin-top: .6rem; isolation: isolate; }
+@media (min-width: 560px) { .stickers { grid-template-columns: repeat(4, 1fr); } }
+.stcard { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .15rem; isolation: isolate; }
+.stcard .sticker { margin-bottom: .7rem; }
+.stcard b { font-size: .88rem; line-height: 1.15; }
+.stcard .stdesc { font-size: .72rem; color: var(--muted); line-height: 1.2; }
+.stcard .stdate { font-size: .72rem; font-weight: 600; color: var(--muted); }
+.stcard.got .stdate { color: var(--ok); }
+.stprog { width: 70%; height: 7px; background: #eef0f7; border-radius: 99px; overflow: hidden; margin-top: .2rem; }
+.stprog span { display: block; height: 100%; background: linear-gradient(90deg, var(--sun), var(--brand)); border-radius: 99px; }
+
+/* ---------- Konfetti-Moment ---------- */
+.celebrate { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem;
+  background: rgba(43, 42, 61, .45); animation: fadein .25s ease-out; }
+.celebrate[hidden] { display: none; }
+.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 51; }
+.cel-card { position: relative; z-index: 52; width: 100%; max-width: 400px; max-height: 88vh; overflow-y: auto; background: #fff; border: 4px solid var(--sun);
+  border-radius: 28px; padding: 1.3rem 1.1rem 1rem; text-align: center; box-shadow: 0 8px 0 var(--sun-dark), 0 18px 40px rgba(0,0,0,.3);
+  animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+.cel-big { font-size: 3rem; font-weight: 700; line-height: 1.05; color: #fff; -webkit-text-stroke: 2px #e07a00; paint-order: stroke fill; text-shadow: 0 4px 0 #c45f00; }
+.cel-big small { font-size: 1.3rem; }
+.cel-card h2 { margin: .4rem 0 .6rem; }
+.cel-list { list-style: none; margin: 0 0 .6rem; padding: 0; text-align: left; }
+.cel-list li { display: flex; gap: .6rem; align-items: center; padding: .45rem 0; border-top: 2px dashed var(--line); }
+.cel-list li:first-child { border-top: 0; }
+.cel-list .plus { color: var(--ok); font-weight: 700; }
+.cel-reward { background: #ffe3ef; border-radius: 16px; padding: .6rem .8rem; margin: .5rem 0; }
+.cel-badge { display: flex; align-items: center; gap: .7rem; text-align: left; background: #fff7d6; border-radius: 16px; padding: .7rem .8rem; margin: .5rem 0; }
+.cel-stickers { display: flex; flex-wrap: wrap; justify-content: center; gap: .9rem .5rem; margin: .6rem 0 1rem; }
+.cel-card .btn.block { margin: .8rem 0 0; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

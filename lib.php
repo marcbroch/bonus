@@ -107,6 +107,8 @@ function init_schema(PDO $pdo): void {
     // Migration für bestehende Datenbanken: Profilbild je Person
     $cols = array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name');
     if (!in_array('avatar', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+    // Migration: wann das Kind zuletzt Neuigkeiten gesehen hat (für den Konfetti-Moment)
+    if (!in_array('seen_at', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN seen_at TEXT');
     // Migration: Stichwort und Bild je Aufgabe, für vorhandene Aufgaben automatisch vorschlagen.
     // Darf die App nie lahmlegen: Bei einem Fehler wird er protokolliert und die App läuft weiter
     // (die Bilder werden dann über den Aufgabennamen gewählt).
@@ -479,7 +481,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=6">
+<link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body>
 <header class="top">
@@ -507,13 +509,14 @@ function page_header(string $title, ?array $user = null): void {
 <?php endif; ?>
 <main>
 <?php if ($f): ?><div class="flash <?= h($f[1]) ?>"><?= h($f[0]) ?></div><?php endif; ?>
+<?php if ($user && $user['role'] === 'child') render_celebration($user); ?>
 <?php
 }
 
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=4"></script>
+<script src="assets/app.js?v=7"></script>
 </body>
 </html>
 <?php
@@ -535,3 +538,5 @@ function pending_count(): int {
 function status_label(string $s): string {
     return ['pending' => 'wartet', 'approved' => 'bestätigt', 'rejected' => 'abgelehnt'][$s] ?? $s;
 }
+
+require __DIR__ . '/badges.php';

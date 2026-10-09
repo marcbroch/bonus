@@ -16,6 +16,39 @@
     } catch (e) { return file; }
   }
 
+  // Konfetti-Moment: Karte zeigen, Konfetti regnen lassen, mit "Juhu!" schließen
+  const cel = document.querySelector('.js-celebrate');
+  if (cel) {
+    const close = () => { cel.hidden = true; };
+    cel.querySelector('.js-celebrate-close').addEventListener('click', close);
+    cel.addEventListener('click', e => { if (e.target === cel) close(); });
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cv = cel.querySelector('.confetti');
+    if (cv && !calm) {
+      const ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+      const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+      const colors = ['#ff4f6d', '#ff8a1f', '#ffd23f', '#3cbf5b', '#2f9be0', '#9b5de5', '#ff5fa2'];
+      const bits = Array.from({ length: 140 }, () => ({
+        x: Math.random() * W, y: -Math.random() * H * .6, w: (6 + Math.random() * 6) * dpr, h: (9 + Math.random() * 8) * dpr,
+        vx: (Math.random() - .5) * 2.5 * dpr, vy: (2.5 + Math.random() * 3.5) * dpr, r: Math.random() * 6, vr: (Math.random() - .5) * .3,
+        c: colors[Math.floor(Math.random() * colors.length)]
+      }));
+      const start = performance.now();
+      const tick = now => {
+        const t = now - start;
+        ctx.clearRect(0, 0, W, H);
+        ctx.globalAlpha = t > 2600 ? Math.max(0, 1 - (t - 2600) / 900) : 1;
+        bits.forEach(b => {
+          b.x += b.vx + Math.sin((t / 300) + b.r) * .6 * dpr; b.y += b.vy; b.r += b.vr;
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.c;
+          ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h * Math.abs(Math.cos(b.r))); ctx.restore();
+        });
+        if (t < 3500) requestAnimationFrame(tick); else ctx.clearRect(0, 0, W, H);
+      };
+      requestAnimationFrame(tick);
+    }
+  }
+
   // Startseite: nach Wahl des Profils direkt ins Passwortfeld springen
   document.querySelectorAll('.js-login input[name=uid]').forEach(r => r.addEventListener('change', () => {
     const pw = document.querySelector('.js-login input[name=password]');
