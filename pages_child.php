@@ -30,7 +30,7 @@ function page_home(): void {
     </section>
     <a class="btn primary block" href="index.php?p=submit">＋ Aufgabe erledigt</a>
     <section class="card">
-      <h2>Zuletzt gemeldet</h2>
+      <h2>🧹 Zuletzt gemeldet</h2>
       <?php if (!$recent): ?><p class="muted">Noch nichts gemeldet. Los geht’s!</p><?php endif; ?>
       <ul class="list">
         <?php foreach ($recent as $s): ?>
@@ -72,7 +72,7 @@ function page_submit(): void {
     page_header('Aufgabe melden', $u);
     ?>
     <section class="card">
-      <h1>Was hast du erledigt?</h1>
+      <h1>Was hast du erledigt? 💪</h1>
       <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
       <form method="post" enctype="multipart/form-data" class="js-photo-form">
         <?= csrf_field() ?>
@@ -150,7 +150,7 @@ function page_rewards(): void {
     <?php endforeach; ?>
     <?php if ($done): ?>
     <section class="card">
-      <h2>Deine Einlösungen</h2>
+      <h2>🎁 Deine Einlösungen</h2>
       <ul class="list">
         <?php foreach ($done as $d): ?>
           <li><div><b><?= h($d['amount_text']) ?> <?= h($d['reward_name']) ?></b><br><span class="muted"><?= fmt_date($d['created_at']) ?> · <?= (int)$d['points'] ?> P.</span>
@@ -172,7 +172,7 @@ function page_history(): void {
     page_header('Verlauf', $u);
     ?>
     <section class="card">
-      <h1>Deine Aufgaben</h1>
+      <h1>🏆 Deine Aufgaben</h1>
       <?php if (!$rows): ?><p class="muted">Noch keine Aufgaben gemeldet.</p><?php endif; ?>
       <ul class="list">
         <?php foreach ($rows as $s): ?>

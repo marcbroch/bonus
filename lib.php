@@ -236,8 +236,9 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
-<meta name="theme-color" content="#1f6f5c">
-<link rel="stylesheet" href="assets/style.css?v=1">
+<meta name="theme-color" content="#5ec4f2">
+<link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css?v=2">
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
 <script type="text/javascript">//<![CDATA[
 var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
@@ -247,24 +248,26 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="index.php"><img src="assets/icon-192.png" alt=""> <?= APP_NAME ?></a>
+  <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
+    <span class="logo"><span class="rainbow"><?= rainbow('Brochhaus') ?></span><span class="sub">Bonus</span></span></a>
   <?php if ($user): ?>
     <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
 </header>
+<?php $cur = (string)($_GET['p'] ?? ''); $on = fn(string $p) => $cur === $p ? ' class="on"' : ''; ?>
 <?php if ($user && $user['role'] === 'parent'): $pend = pending_count(); ?>
 <nav class="tabs">
-  <a href="index.php?p=admin">Freigaben<?= $pend ? ' <b class="badge">' . $pend . '</b>' : '' ?></a>
-  <a href="index.php?p=admin_enter">Eintragen</a>
-  <a href="index.php?p=admin_overview">Übersicht</a>
-  <a href="index.php?p=admin_settings">Verwalten</a>
+  <a href="index.php?p=admin"<?= $on('admin') ?>>Freigaben<?= $pend ? ' <b class="badge">' . $pend . '</b>' : '' ?></a>
+  <a href="index.php?p=admin_enter"<?= $on('admin_enter') ?>>Eintragen</a>
+  <a href="index.php?p=admin_overview"<?= $on('admin_overview') ?>>Übersicht</a>
+  <a href="index.php?p=admin_settings"<?= $on('admin_settings') ?>>Verwalten</a>
 </nav>
 <?php elseif ($user): ?>
 <nav class="tabs">
-  <a href="index.php?p=home">Start</a>
-  <a href="index.php?p=submit">Aufgabe melden</a>
-  <a href="index.php?p=rewards">Einlösen</a>
-  <a href="index.php?p=history">Verlauf</a>
+  <a href="index.php?p=home"<?= $on('home') ?>>Start</a>
+  <a href="index.php?p=submit"<?= $on('submit') ?>>Aufgabe melden</a>
+  <a href="index.php?p=rewards"<?= $on('rewards') ?>>Einlösen</a>
+  <a href="index.php?p=history"<?= $on('history') ?>>Verlauf</a>
 </nav>
 <?php endif; ?>
 <main>
@@ -275,9 +278,9 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=1"></script>
+<script src="assets/app.js?v=2"></script>
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 2 -->
-<div style="text-align:center;margin:24px 0">
+<div class="seal">
 <script language="JavaScript" type="text/javascript">
 TrustLogo("https://www.trustlogo.com/images/install/instantssl_trust_seal_md_159x42.png", "SC7", "none");
 </script>
@@ -286,6 +289,13 @@ TrustLogo("https://www.trustlogo.com/images/install/instantssl_trust_seal_md_159
 </body>
 </html>
 <?php
+}
+
+// Schriftzug mit bunten, leicht verdrehten Buchstaben (Farben kommen aus style.css)
+function rainbow(string $text): string {
+    $out = '';
+    foreach (mb_str_split($text) as $ch) $out .= '<span>' . h($ch) . '</span>';
+    return $out;
 }
 
 function pending_count(): int {
