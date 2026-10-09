@@ -139,16 +139,6 @@ function page_admin_enter(): void {
 function page_admin_overview(): void {
     $me = require_parent();
     $pdo = db();
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        check_csrf();
-        // Bestätigte Aufgabe rückgängig machen
-        if (($_POST['action'] ?? '') === 'undo') {
-            $st = $pdo->prepare("UPDATE submissions SET status='rejected', points=0, comment=COALESCE(comment,'Zurückgenommen'), reviewed_by=?, reviewed_at=? WHERE id=? AND status='approved'");
-            $st->execute([$me['id'], now(), (int)$_POST['id']]);
-            flash('Gutschrift zurückgenommen.');
-        }
-        redirect('admin_overview', array_filter(['u' => $_POST['u'] ?? '']));
-    }
     $kids = children();
     $weekStart = date('Y-m-d 00:00:00', strtotime('monday this week'));
     $wk = $pdo->prepare("SELECT COALESCE(SUM(points),0) FROM submissions WHERE user_id=? AND status='approved' AND created_at >= ?");
@@ -185,10 +175,7 @@ function page_admin_overview(): void {
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
             <?php if ($s['status'] === 'approved'): ?>
-              <form method="post" onsubmit="return confirm('Gutschrift wirklich zurücknehmen?')">
-                <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$s['id'] ?>"><input type="hidden" name="u" value="<?= $filter ?: '' ?>">
-                <button class="btn tiny ghost" name="action" value="undo" title="Zurücknehmen">↺</button>
-              </form>
+              <a class="btn tiny ghost" href="index.php?p=admin_settings&s=entries&u=<?= (int)$s['user_id'] ?>#sub<?= (int)$s['id'] ?>" title="Ändern oder entfernen" aria-label="Ändern oder entfernen">✏️</a>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>
@@ -261,6 +248,54 @@ function page_admin_settings(): void {
                     }
                     flash('Belohnung gespeichert.');
                     break;
+                case 'edit_sub':
+                    $row = approved_row('submissions', $id);
+                    $pts = (int)($_POST['points'] ?? -1);
+                    if ($pts < 0 || $pts > 1000) throw new RuntimeException('Bitte eine Punktzahl zwischen 0 und 1000 eintragen.');
+                    $taskId = (int)($_POST['task_id'] ?? 0);
+                    $taskName = $row['task_name'];
+                    if ($taskId && $taskId !== (int)$row['task_id']) {
+                        $st = $pdo->prepare('SELECT name FROM tasks WHERE id=?');
+                        $st->execute([$taskId]);
+                        $taskName = $st->fetchColumn();
+                        if ($taskName === false) throw new RuntimeException('Diese Aufgabe gibt es nicht.');
+                    } else {
+                        $taskId = $row['task_id'] === null ? null : (int)$row['task_id'];
+                    }
+                    $comment = trim((string)($_POST['comment'] ?? '')) ?: null;
+                    $pdo->prepare('UPDATE submissions SET task_id=?, task_name=?, points=?, comment=? WHERE id=?')
+                        ->execute([$taskId, $taskName, $pts, $comment, $id]);
+                    flash('Eintrag geändert.');
+                    break;
+                case 'delete_sub':
+                    $row = approved_row('submissions', $id);
+                    $pdo->prepare('DELETE FROM submissions WHERE id=?')->execute([$id]);
+                    // Foto mit entfernen (nur Dateien aus uploads/ im erwarteten Format)
+                    if ($row['photo'] && preg_match('#^\d{4}/\d{2}/[a-f0-9]{24}\.(jpg|png|webp|gif)$#', $row['photo'])) {
+                        @unlink(UPLOAD_DIR . '/' . $row['photo']);
+                    }
+                    flash('Eintrag entfernt: ' . $row['task_name'] . '.');
+                    break;
+                case 'edit_red':
+                    $row = approved_row('redemptions', $id);
+                    $qty = (int)($_POST['qty'] ?? 0);
+                    if ($qty < 1 || $qty > 50) throw new RuntimeException('Bitte eine Anzahl zwischen 1 und 50 eintragen.');
+                    $unitPts = intdiv((int)$row['points'], max(1, (int)$row['quantity']));
+                    $unit = preg_replace('/^\d+\s*×\s*/u', '', (string)$row['amount_text']);
+                    $newPts = $unitPts * $qty;
+                    if (balance((int)$row['user_id']) + (int)$row['points'] - $newPts < 0) {
+                        throw new RuntimeException('Dafür reichen die Punkte des Kindes nicht.');
+                    }
+                    $comment = trim((string)($_POST['comment'] ?? '')) ?: null;
+                    $pdo->prepare('UPDATE redemptions SET quantity=?, amount_text=?, points=?, comment=? WHERE id=?')
+                        ->execute([$qty, $qty . ' × ' . $unit, $newPts, $comment, $id]);
+                    flash('Auszahlung geändert.');
+                    break;
+                case 'delete_red':
+                    $row = approved_row('redemptions', $id);
+                    $pdo->prepare('DELETE FROM redemptions WHERE id=?')->execute([$id]);
+                    flash('Auszahlung entfernt, ' . (int)$row['points'] . ' Punkte sind zurück auf dem Konto.');
+                    break;
                 case 'save_matrix':
                     $pdo->beginTransaction();
                     $pdo->exec('DELETE FROM reward_user');
@@ -282,7 +317,7 @@ function page_admin_settings(): void {
             if ($pdo->inTransaction()) $pdo->rollBack();
             flash(str_contains($e->getMessage(), 'UNIQUE') ? 'Diesen Namen gibt es schon.' : 'Speichern fehlgeschlagen.', 'err');
         }
-        redirect('admin_settings', ['s' => $_POST['s'] ?? 'people']);
+        redirect('admin_settings', array_filter(['s' => $_POST['s'] ?? 'people', 'u' => (int)($_POST['u'] ?? 0)]));
     }
 
     $s = $_GET['s'] ?? 'people';
@@ -293,10 +328,12 @@ function page_admin_settings(): void {
       <a class="<?= $s === 'people' ? 'on' : '' ?>" href="index.php?p=admin_settings&s=people">Personen</a>
       <a class="<?= $s === 'tasks' ? 'on' : '' ?>" href="index.php?p=admin_settings&s=tasks">Aufgaben</a>
       <a class="<?= $s === 'rewards' ? 'on' : '' ?>" href="index.php?p=admin_settings&s=rewards">Belohnungen</a>
+      <a class="<?= $s === 'entries' ? 'on' : '' ?>" href="index.php?p=admin_settings&s=entries">Bestätigt</a>
     </nav>
     <?php
     if ($s === 'tasks') settings_tasks();
     elseif ($s === 'rewards') settings_rewards();
+    elseif ($s === 'entries') settings_entries();
     else settings_people($me);
     page_footer();
 }
@@ -396,6 +433,114 @@ function settings_tasks(): void {
       </div>
       <button class="btn primary" name="action" value="add_task">Hinzufügen</button>
     </form>
+    <?php
+}
+
+// Bestätigten Eintrag laden (nur bestätigte dürfen hier geändert werden)
+function approved_row(string $table, int $id): array {
+    $st = db()->prepare("SELECT * FROM $table WHERE id=? AND status='approved'");
+    $st->execute([$id]);
+    $row = $st->fetch();
+    if (!$row) throw new RuntimeException('Diesen Eintrag gibt es nicht mehr.');
+    return $row;
+}
+
+// Verwalten > Bestätigt: bestätigte Aufgaben und Auszahlungen ändern oder entfernen
+function settings_entries(): void {
+    $pdo = db();
+    $kids = children(false);
+    $u = (int)($_GET['u'] ?? 0);
+    $limit = min(500, max(30, (int)($_GET['n'] ?? 30)));
+    $where = $u ? ' AND x.user_id=' . $u : '';
+    $subs = $pdo->query("SELECT x.*, k.name AS child, r.name AS reviewer FROM submissions x JOIN users k ON k.id=x.user_id
+                         LEFT JOIN users r ON r.id=x.reviewed_by WHERE x.status='approved'$where")->fetchAll();
+    $reds = $pdo->query("SELECT x.*, k.name AS child, r.name AS reviewer FROM redemptions x JOIN users k ON k.id=x.user_id
+                         LEFT JOIN users r ON r.id=x.reviewed_by WHERE x.status='approved'$where")->fetchAll();
+    $rows = [];
+    foreach ($subs as $x) $rows[] = ['kind' => 'sub', 'row' => $x];
+    foreach ($reds as $x) $rows[] = ['kind' => 'red', 'row' => $x];
+    usort($rows, fn($a, $b) => strcmp($b['row']['created_at'], $a['row']['created_at']));
+    $total = count($rows);
+    $rows = array_slice($rows, 0, $limit);
+    $tasks = $pdo->query('SELECT id, name FROM tasks ORDER BY active DESC, sort, id')->fetchAll();
+    $bal = [];
+    foreach ($kids as $k) $bal[(int)$k['id']] = balance((int)$k['id']);
+    ?>
+    <p class="muted">Hier könnt ihr bereits bestätigte Aufgaben und Auszahlungen nachträglich ändern oder entfernen.
+      Punktestand, Wochenwertung und Sticker passen sich automatisch an.</p>
+    <nav class="subtabs kidfilter">
+      <a class="<?= $u ? '' : 'on' ?>" href="index.php?p=admin_settings&s=entries">Alle</a>
+      <?php foreach ($kids as $k): ?>
+        <a class="<?= $u === (int)$k['id'] ? 'on' : '' ?>" href="index.php?p=admin_settings&s=entries&u=<?= (int)$k['id'] ?>"><?= avatar($k) ?> <?= h($k['name']) ?></a>
+      <?php endforeach; ?>
+    </nav>
+    <?php if (!$rows): ?><p class="card muted">Noch keine bestätigten Einträge.</p><?php endif; ?>
+    <?php foreach ($rows as $e): $x = $e['row']; $id = (int)$x['id']; $kb = $bal[(int)$x['user_id']] ?? 0; ?>
+      <?php if ($e['kind'] === 'sub'): ?>
+        <section class="card entry" id="sub<?= $id ?>">
+          <div class="entry-head">
+            <?php if ($x['photo']): ?><a href="<?= h(photo_url($x['photo'])) ?>" target="_blank" class="tpic"><?= task_img((string)$x['task_name'], 'ticon', $x['task_id'] === null ? null : (int)$x['task_id']) ?><img class="thumb mini" src="<?= h(photo_url($x['photo'])) ?>" alt="Foto" loading="lazy"></a>
+            <?php else: ?><?= task_img((string)$x['task_name'], 'ticon', $x['task_id'] === null ? null : (int)$x['task_id']) ?><?php endif; ?>
+            <div class="grow"><b><?= h($x['child']) ?>:</b> <?= h($x['task_name']) ?><br>
+              <span class="muted"><?= fmt_date($x['created_at']) ?><?= $x['reviewer'] ? ' · bestätigt von ' . h($x['reviewer']) : '' ?></span>
+              <?php if ($x['comment']): ?><br><span class="comment">„<?= h($x['comment']) ?>“</span><?php endif; ?></div>
+            <span class="pill approved">+<?= (int)$x['points'] ?></span>
+          </div>
+          <details>
+            <summary>✏️ Ändern oder entfernen</summary>
+            <form method="post" class="entry-form">
+              <?= csrf_field() ?><input type="hidden" name="s" value="entries"><input type="hidden" name="u" value="<?= $u ?: '' ?>"><input type="hidden" name="id" value="<?= $id ?>">
+              <label>Aufgabe<select name="task_id">
+                <?php if ($x['task_id'] === null): ?><option value="0" selected><?= h($x['task_name']) ?></option><?php endif; ?>
+                <?php foreach ($tasks as $t): ?><option value="<?= (int)$t['id'] ?>"<?= (int)$t['id'] === (int)$x['task_id'] ? ' selected' : '' ?>><?= h($t['name']) ?></option><?php endforeach; ?>
+              </select></label>
+              <div class="grid2">
+                <label>Punkte<input name="points" type="number" min="0" max="1000" value="<?= (int)$x['points'] ?>" required inputmode="numeric"></label>
+                <label>Kommentar<input name="comment" value="<?= h($x['comment']) ?>" maxlength="200" placeholder="optional"></label>
+              </div>
+              <div class="row">
+                <button class="btn primary" name="action" value="edit_sub">Speichern</button>
+                <button class="btn danger" name="action" value="delete_sub" formnovalidate
+                  onclick="return confirm(<?= h(json_encode('„' . $x['task_name'] . '“ von ' . $x['child'] . ' wirklich entfernen? ' . (int)$x['points'] . ' Punkte werden abgezogen, das Foto wird gelöscht.' . ($kb - (int)$x['points'] < 0 ? ' Achtung: Der Punktestand wäre danach ' . ($kb - (int)$x['points']) . '.' : ''), JSON_UNESCAPED_UNICODE)) ?>)">🗑️ Entfernen</button>
+              </div>
+            </form>
+          </details>
+        </section>
+      <?php else: ?>
+        <section class="card entry" id="red<?= $id ?>">
+          <div class="entry-head">
+            <span class="gift" aria-hidden="true">🎁</span>
+            <div class="grow"><b><?= h($x['child']) ?>:</b> <?= h($x['amount_text']) ?> <?= h($x['reward_name']) ?><br>
+              <span class="muted"><?= fmt_date($x['created_at']) ?><?= $x['reviewer'] ? ' · ausgezahlt von ' . h($x['reviewer']) : '' ?></span>
+              <?php if ($x['comment']): ?><br><span class="comment">„<?= h($x['comment']) ?>“</span><?php endif; ?></div>
+            <span class="pill">−<?= (int)$x['points'] ?></span>
+          </div>
+          <details>
+            <summary>✏️ Ändern oder entfernen</summary>
+            <form method="post" class="entry-form">
+              <?= csrf_field() ?><input type="hidden" name="s" value="entries"><input type="hidden" name="u" value="<?= $u ?: '' ?>"><input type="hidden" name="id" value="<?= $id ?>">
+              <div class="grid2">
+                <label>Anzahl <span class="muted">(je <?= intdiv((int)$x['points'], max(1, (int)$x['quantity'])) ?> P.)</span>
+                  <input name="qty" type="number" min="1" max="50" value="<?= (int)$x['quantity'] ?>" required inputmode="numeric"></label>
+                <label>Wie ausgezahlt?<input name="comment" list="payout-ways" value="<?= h($x['comment']) ?>" maxlength="200" placeholder="optional"></label>
+              </div>
+              <div class="row">
+                <button class="btn primary" name="action" value="edit_red">Speichern</button>
+                <button class="btn danger" name="action" value="delete_red" formnovalidate
+                  onclick="return confirm(<?= h(json_encode('Auszahlung „' . $x['amount_text'] . ' ' . $x['reward_name'] . '“ von ' . $x['child'] . ' wirklich entfernen? Die ' . (int)$x['points'] . ' Punkte kommen zurück aufs Konto.', JSON_UNESCAPED_UNICODE)) ?>)">🗑️ Entfernen</button>
+              </div>
+            </form>
+          </details>
+        </section>
+      <?php endif; ?>
+    <?php endforeach; ?>
+    <?php if ($total > $limit): ?>
+      <a class="btn block" href="index.php?p=admin_settings&s=entries<?= $u ? '&u=' . $u : '' ?>&n=<?= $limit + 50 ?>">Ältere Einträge zeigen (<?= $total - $limit ?> weitere)</a>
+    <?php endif; ?>
+    <datalist id="payout-ways">
+      <option value="Bar ausgezahlt"><option value="Aufs Sparbuch"><option value="Aufs Kinderkonto überwiesen">
+      <option value="Bildschirmzeit am iPhone freigeschaltet"><option value="PlayStation-Zeit freigeschaltet">
+    </datalist>
     <?php
 }
 

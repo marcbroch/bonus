@@ -107,6 +107,8 @@ function init_schema(PDO $pdo): void {
     // Migration für bestehende Datenbanken: Profilbild je Person
     $cols = array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name');
     if (!in_array('avatar', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+    // Migration: wann das Kind zuletzt Neuigkeiten gesehen hat (für den Konfetti-Moment)
+    if (!in_array('seen_at', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN seen_at TEXT');
     // Migration: Stichwort und Bild je Aufgabe, für vorhandene Aufgaben automatisch vorschlagen.
     // Darf die App nie lahmlegen: Bei einem Fehler wird er protokolliert und die App läuft weiter
     // (die Bilder werden dann über den Aufgabennamen gewählt).
@@ -479,12 +481,12 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=6">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
-    <span class="logo"><span class="rainbow"><?= rainbow('Brochhaus') ?></span><span class="sub">Bonus</span></span></a>
+    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus</span></span></a>
   <?php if ($user): ?>
     <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
@@ -507,23 +509,65 @@ function page_header(string $title, ?array $user = null): void {
 <?php endif; ?>
 <main>
 <?php if ($f): ?><div class="flash <?= h($f[1]) ?>"><?= h($f[0]) ?></div><?php endif; ?>
+<?php if ($user && $user['role'] === 'child') render_celebration($user); ?>
 <?php
 }
 
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=4"></script>
+<script src="assets/app.js?v=7"></script>
 </body>
 </html>
 <?php
 }
 
-// Schriftzug mit bunten, leicht verdrehten Buchstaben (Farben kommen aus style.css)
-function rainbow(string $text): string {
-    $out = '';
-    foreach (mb_str_split($text) as $ch) $out .= '<span>' . h($ch) . '</span>';
-    return $out;
+// Farbe aufhellen (+) oder abdunkeln (-), $f zwischen -1 und 1
+function shade(string $hex, float $f): string {
+    $rgb = array_map('hexdec', str_split(ltrim($hex, '#'), 2));
+    $rgb = array_map(fn($c) => (int)round($f >= 0 ? $c + (255 - $c) * $f : $c * (1 + $f)), $rgb);
+    return vsprintf('#%02x%02x%02x', $rgb);
+}
+
+// Schriftzug wie im Titelbild: dicke Comic-Buchstaben im Bogen, jeder in eigener Farbe,
+// mit Glanzlicht, dunkler Kante, 3D-Unterkante und Sternchen drumherum
+function brand_logo(): string {
+    $letters = [['B', '#ff4fa0'], ['R', '#ff6a2b'], ['O', '#ffb21f'], ['C', '#7cc83a'], ['H', '#22b5e6'],
+                ['H', '#a65fe8'], ['A', '#ff8a24'], ['U', '#1fc4b0'], ['S', '#2f8fe6']];
+    $defs = $fill = $back = '';
+    foreach ($letters as $i => [$ch, $c]) {
+        $defs .= '<linearGradient id="lg' . $i . '" x1="0" y1="0" x2="0" y2="1">'
+               . '<stop offset="0" stop-color="' . shade($c, .55) . '"/><stop offset=".45" stop-color="' . $c . '"/>'
+               . '<stop offset="1" stop-color="' . shade($c, -.25) . '"/></linearGradient>';
+        $fill .= '<tspan fill="url(#lg' . $i . ')" stroke="' . shade($c, -.45) . '">' . $ch . '</tspan>';
+        $back .= '<tspan fill="' . shade($c, -.5) . '" stroke="' . shade($c, -.5) . '">' . $ch . '</tspan>';
+    }
+    $star = function (float $x, float $y, float $r, string $c): string {
+        $pts = [];
+        for ($k = 0; $k < 10; $k++) {
+            $a = -M_PI / 2 + $k * M_PI / 5; $rr = $k % 2 ? $r * .45 : $r;
+            $pts[] = round($x + $rr * cos($a), 1) . ',' . round($y + $rr * sin($a), 1);
+        }
+        return '<polygon points="' . implode(' ', $pts) . '" fill="' . $c . '" stroke="#2b2a3d" stroke-width="1.5" stroke-linejoin="round"/>';
+    };
+    $sparkle = fn(float $x, float $y, float $r) => '<path d="M' . $x . ' ' . ($y - $r) . ' Q' . ($x + $r * .18) . ' ' . ($y - $r * .18) . ' ' . ($x + $r) . ' ' . $y
+        . ' Q' . ($x + $r * .18) . ' ' . ($y + $r * .18) . ' ' . $x . ' ' . ($y + $r) . ' Q' . ($x - $r * .18) . ' ' . ($y + $r * .18) . ' ' . ($x - $r) . ' ' . $y
+        . ' Q' . ($x - $r * .18) . ' ' . ($y - $r * .18) . ' ' . $x . ' ' . ($y - $r) . 'Z" fill="#fff"/>';
+    $path = 'M12 122 Q250 8 488 122';
+    $txt = 'font-family="Fredoka, \'Baloo 2\', \'Comic Sans MS\', sans-serif" font-weight="700" font-stretch="78%" style="font-stretch:78%" font-size="92" letter-spacing="3" text-anchor="middle" stroke-linejoin="round"';
+    return '<svg class="wordmark" viewBox="0 0 500 140" role="img" aria-label="Brochhaus">'
+        . '<defs>' . $defs . '<path id="arc" d="' . $path . '"/>'
+        . '<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset=".08" stop-color="#fff" stop-opacity=".95"/>'
+        . '<stop offset=".34" stop-color="#fff" stop-opacity=".35"/><stop offset=".46" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
+        . $star(24, 40, 12, '#ffd23f') . $star(476, 44, 11, '#ff5fa2') . $star(120, 18, 9, '#7cc6f2') . $star(318, 134, 8, '#9b5de5') . $star(392, 128, 8, '#3cbf5b')
+        . $sparkle(64, 14, 9) . $sparkle(392, 16, 9) . $sparkle(250, 134, 6)
+        // 3D-Unterkante
+        . '<text ' . $txt . ' stroke-width="8" transform="translate(0 6)"><textPath href="#arc" startOffset="50%">' . $back . '</textPath></text>'
+        // Buchstaben mit dunkler Kante
+        . '<text ' . $txt . ' stroke-width="6" paint-order="stroke"><textPath href="#arc" startOffset="50%">' . $fill . '</textPath></text>'
+        // Glanzlicht oben
+        . '<text ' . $txt . ' fill="url(#gloss)" stroke="none"><textPath href="#arc" startOffset="50%">BROCHHAUS</textPath></text>'
+        . '</svg>';
 }
 
 function pending_count(): int {
@@ -535,3 +579,5 @@ function pending_count(): int {
 function status_label(string $s): string {
     return ['pending' => 'wartet', 'approved' => 'bestätigt', 'rejected' => 'abgelehnt'][$s] ?? $s;
 }
+
+require __DIR__ . '/badges.php';

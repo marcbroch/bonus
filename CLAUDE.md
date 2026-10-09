@@ -24,7 +24,8 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
 - `index.php` ist der Einstieg (Routing über `?p=...`). `lib.php` enthält
   gemeinsame Funktionen, Datenbankschema und Layout, `pages_child.php` die
   Kinder-Seiten, `pages_admin.php` die Eltern-Seiten, `photo.php` liefert
-  Fotos nur nach Anmeldung aus.
+  Fotos nur nach Anmeldung aus. `badges.php` berechnet die Sticker (Sammelalbum)
+  aus den vorhandenen Daten und zeigt den Konfetti-Moment (Spalte `users.seen_at`).
 - Alle Links müssen **relativ** bleiben (z. B. `index.php?p=home`), weil die
   App im Unterordner `/bonus` läuft.
 - Bei Änderungen an CSS oder JS die Versionsnummer `?v=` in `lib.php`

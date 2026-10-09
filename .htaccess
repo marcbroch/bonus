@@ -12,7 +12,7 @@ Options -Indexes
 </IfModule>
 
 # Interne Dateien nicht direkt abrufbar
-<FilesMatch "^(lib|pages_child|pages_admin)\.php$">
+<FilesMatch "^(lib|pages_child|pages_admin|badges)\.php$">
   Require all denied
 </FilesMatch>
 

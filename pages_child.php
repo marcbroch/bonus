@@ -223,6 +223,8 @@ function page_account(): void {
       <div class="stat"><b><?= $tasksDone ?></b><span>Aufgaben</span></div>
     </div>
 
+    <?php render_album($kid, $own); ?>
+
     <section class="card">
       <h2>🎁 Das wurde schon ausgezahlt</h2>
       <?php if (!$payouts): ?><p class="muted">Noch keine Belohnung ausgezahlt.</p><?php endif; ?>

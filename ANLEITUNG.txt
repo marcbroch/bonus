@@ -50,6 +50,13 @@ Nach dem Anmelden zeigt die Wochenwertung, wer von Montag bis
 Sonntag wie viele Punkte gesammelt hat (mit ‹ zu früheren Wochen).
 Die Punkte verfallen nie, sie bleiben auf dem Konto.
 
+Konfetti & Sticker: Wenn ihr eine Aufgabe bestätigt oder eine Belohnung
+auszahlt, sieht das Kind beim nächsten Öffnen der App Konfetti, die
+Punkte und euren Kommentar. Für besondere Leistungen gibt es Sticker
+(z. B. "Müll-Meister" für 10× Müll, "Dranbleiber" für 4 Wochen in
+Folge). Alle Sticker stehen im Sammelalbum unter "Mein Konto" – mit
+Fortschritt, wie viel noch fehlt. Es zählen nur bestätigte Aufgaben.
+
 Passwort ändern: Jeder kann sein eigenes Passwort oben über
 "🔑 Passwort" ändern (Kinder auch unter "Mein Konto"). Dafür braucht
 man das bisherige Passwort. Wer es vergessen hat: Die Eltern legen
@@ -63,6 +70,12 @@ ihr unter "Verwalten" > "Aufgaben".
 
 Unter "Verwalten" könnt ihr Aufgaben, Punkte, Belohnungen und Kurse
 jederzeit ändern – auch pro Kind (z. B. andere Belohnungen für Bent).
+
+Bestätigt ist bestätigt? Nicht ganz: Unter "Verwalten" > "Bestätigt"
+könnt ihr bereits bestätigte Aufgaben und Auszahlungen nachträglich
+ändern (Aufgabe, Punkte, Kommentar bzw. Anzahl, Art der Auszahlung)
+oder entfernen. Der Stift ✏️ in der "Übersicht" führt direkt dorthin.
+Beim Entfernen einer Aufgabe wird auch ihr Foto gelöscht.
 
 Datensicherung (wichtig!)
 -------------------------
