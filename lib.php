@@ -9,6 +9,14 @@ define('UPLOAD_DIR', __DIR__ . '/uploads');
 
 date_default_timezone_set('Europe/Berlin');
 
+// Ersatz für Funktionen, die es erst ab PHP 8 gibt (der Webspace läuft noch mit PHP 7.4)
+if (!function_exists('str_contains')) {
+    function str_contains(string $haystack, string $needle): bool { return $needle === '' || strpos($haystack, $needle) !== false; }
+}
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool { return strncmp($haystack, $needle, strlen($needle)) === 0; }
+}
+
 // Lange Sitzung, damit die Kinder eingeloggt bleiben (90 Tage)
 $lifetime = 60 * 60 * 24 * 90;
 ini_set('session.gc_maxlifetime', (string)$lifetime);
