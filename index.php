@@ -1,5 +1,24 @@
 <?php
 declare(strict_types=1);
+
+// Statt einer leeren Seite: freundliche Meldung zeigen und den Fehler in data/error.log festhalten
+function bonus_fail(string $msg): void {
+    @file_put_contents(__DIR__ . '/data/error.log', date('Y-m-d H:i:s') . ' ' . $msg . "\n", FILE_APPEND);
+    if (!headers_sent()) { http_response_code(500); header('Content-Type: text/html; charset=utf-8'); }
+    echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+       . '<title>Brochhaus-Bonus</title><body style="font:18px/1.5 system-ui,sans-serif;padding:2rem 1rem;text-align:center;background:#bfe9fb;color:#2b2a3d">'
+       . '<h1>🙈 Hoppla!</h1><p>Da ist gerade etwas schiefgelaufen.<br>Bitte gleich noch einmal versuchen.</p></body>';
+}
+set_exception_handler(function (Throwable $e): void {
+    bonus_fail(get_class($e) . ': ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());
+});
+register_shutdown_function(function (): void {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        bonus_fail('PHP-Fehler: ' . $e['message'] . ' in ' . basename($e['file']) . ':' . $e['line']);
+    }
+});
+
 require __DIR__ . '/lib.php';
 require __DIR__ . '/pages_child.php';
 require __DIR__ . '/pages_admin.php';

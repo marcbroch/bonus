@@ -37,8 +37,8 @@ function page_home(): void {
       <p class="muted">Tippe auf eine Aufgabe und mach ein Foto.</p>
       <div class="quick">
         <?php foreach ($tasks as $t): ?>
-          <a class="qtask" href="index.php?p=submit&t=<?= (int)$t['id'] ?>"><?= icon_img($t['icon'], 'ticon big') ?>
-            <b><?= h($t['keyword'] ?: $t['name']) ?></b><span><?= $t['points'] === null ? 'frei' : (int)$t['points'] . ' P.' ?></span></a>
+          <a class="qtask" href="index.php?p=submit&t=<?= (int)$t['id'] ?>"><?= icon_img($t['icon'] ?? guess_icon($t['name']), 'ticon big') ?>
+            <b><?= h(($t['keyword'] ?? '') ?: $t['name']) ?></b><span><?= $t['points'] === null ? 'frei' : (int)$t['points'] . ' P.' ?></span></a>
         <?php endforeach; ?>
       </div>
     </section>
@@ -96,8 +96,8 @@ function page_submit(): void {
           <?php foreach ($tasks as $t): ?>
             <label class="task">
               <input type="radio" name="task_id" value="<?= (int)$t['id'] ?>" required data-free="<?= $t['points'] === null ? 1 : 0 ?>" <?= $sel === (int)$t['id'] ? 'checked' : '' ?>>
-              <?= icon_img($t['icon'], 'ticon big') ?>
-              <span class="tkey"><?= h($t['keyword'] ?: $t['name']) ?></span>
+              <?= icon_img($t['icon'] ?? guess_icon($t['name']), 'ticon big') ?>
+              <span class="tkey"><?= h(($t['keyword'] ?? '') ?: $t['name']) ?></span>
               <span class="tname"><?= h($t['name']) ?></span>
               <span class="tpts"><?= $t['points'] === null ? 'Eltern entscheiden' : (int)$t['points'] . ' P.' ?></span>
             </label>
