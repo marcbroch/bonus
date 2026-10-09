@@ -15,12 +15,14 @@ function page_home(): void {
     $st->execute([$u['id']]);
     $recent = $st->fetchAll();
     $rw = rewards_for((int)$u['id']);
+    $tasks = db()->query('SELECT * FROM tasks WHERE active=1 ORDER BY sort, id')->fetchAll();
     page_header('Start', $u);
     ?>
     <section class="hero">
       <?= avatar($u, 'big') ?>
       <div class="label">Hallo <?= h($u['name']) ?>, du hast</div>
       <div class="big"><?= $bal ?> <small>Punkte</small></div>
+      <div class="keep">auf deinem Konto – sie verfallen nie</div>
       <?php if ($rw && $bal >= min(array_map(fn($r) => (int)$r['cost'], $rw))): ?>
         <div class="worth">
           <?php foreach ($rw as $r): $n = intdiv(max($bal, 0), (int)$r['cost']); if ($n < 1) continue; ?>
@@ -29,14 +31,24 @@ function page_home(): void {
         </div>
       <?php endif; ?>
     </section>
-    <a class="btn primary block" href="index.php?p=submit">＋ Aufgabe erledigt</a>
+    <?php render_week_board('home', $u); ?>
     <section class="card">
-      <h2>🧹 Zuletzt gemeldet</h2>
+      <h2>🧹 Was hast du erledigt?</h2>
+      <p class="muted">Tippe auf eine Aufgabe und mach ein Foto.</p>
+      <div class="quick">
+        <?php foreach ($tasks as $t): ?>
+          <a class="qtask" href="index.php?p=submit&t=<?= (int)$t['id'] ?>"><?= icon_img($t['icon'], 'ticon big') ?>
+            <b><?= h($t['keyword'] ?: $t['name']) ?></b><span><?= $t['points'] === null ? 'frei' : (int)$t['points'] . ' P.' ?></span></a>
+        <?php endforeach; ?>
+      </div>
+    </section>
+    <section class="card">
+      <h2>📸 Zuletzt gemeldet</h2>
       <?php if (!$recent): ?><p class="muted">Noch nichts gemeldet. Los geht’s!</p><?php endif; ?>
       <ul class="list">
         <?php foreach ($recent as $s): ?>
           <li>
-            <?= task_img($s['task_name']) ?>
+            <?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?>
             <div><b><?= h($s['task_name']) ?></b><br><span class="muted"><?= fmt_date($s['created_at']) ?></span>
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
@@ -62,8 +74,8 @@ function page_submit(): void {
         try {
             if (!$task) throw new RuntimeException('Bitte eine Aufgabe auswählen.');
             if ($task['points'] === null && $note === '') throw new RuntimeException('Bitte kurz beschreiben, was du gemacht hast.');
-            $photo = save_photo($_FILES['photo'] ?? []);
-            if (!$photo) throw new RuntimeException('Bitte ein Foto als Nachweis machen.');
+            $photo = photo_from_request();
+            if (!$photo) throw new RuntimeException('Bitte ein Foto als Nachweis machen oder auswählen.');
             $ins = db()->prepare('INSERT INTO submissions (user_id, task_id, task_name, note, photo, points, created_at) VALUES (?,?,?,?,?,?,?)');
             $ins->execute([$u['id'], $task['id'], $task['name'], $note ?: null, $photo, (int)($task['points'] ?? 0), now()]);
             flash('Super! Deine Aufgabe wartet jetzt auf die Freigabe.');
@@ -72,6 +84,7 @@ function page_submit(): void {
             $error = $e->getMessage();
         }
     }
+    $sel = (int)($_POST['task_id'] ?? $_GET['t'] ?? 0);
     page_header('Aufgabe melden', $u);
     ?>
     <section class="card">
@@ -82,18 +95,16 @@ function page_submit(): void {
         <div class="taskpick tiles">
           <?php foreach ($tasks as $t): ?>
             <label class="task">
-              <input type="radio" name="task_id" value="<?= (int)$t['id'] ?>" required data-free="<?= $t['points'] === null ? 1 : 0 ?>">
-              <?= task_img($t['name'], 'ticon big') ?>
+              <input type="radio" name="task_id" value="<?= (int)$t['id'] ?>" required data-free="<?= $t['points'] === null ? 1 : 0 ?>" <?= $sel === (int)$t['id'] ? 'checked' : '' ?>>
+              <?= icon_img($t['icon'], 'ticon big') ?>
+              <span class="tkey"><?= h($t['keyword'] ?: $t['name']) ?></span>
               <span class="tname"><?= h($t['name']) ?></span>
               <span class="tpts"><?= $t['points'] === null ? 'Eltern entscheiden' : (int)$t['points'] . ' P.' ?></span>
             </label>
           <?php endforeach; ?>
         </div>
-        <label class="photo-drop">
-          <input type="file" name="photo" accept="image/*" capture="environment" required>
-          <span class="photo-hint">📷 Foto machen</span>
-          <img class="photo-preview" alt="" hidden>
-        </label>
+        <h2 id="foto">Foto als Nachweis</h2>
+        <?php photo_picker(); ?>
         <label>Kurze Notiz <span class="muted js-note-hint">(optional)</span>
           <textarea name="note" rows="2" maxlength="300" placeholder="z. B. alle drei Mülltonnen"></textarea></label>
         <button class="btn primary block">Einreichen</button>
@@ -230,8 +241,9 @@ function page_account(): void {
         <?php foreach ($entries as $e): $r = $e['row']; ?>
           <li class="<?= $e['delta'] === 0 ? 'zero' : '' ?>">
             <?php if ($e['kind'] === 'task'): ?>
-              <?php if ($r['photo']): ?><a href="<?= h(photo_url($r['photo'])) ?>" target="_blank" class="tpic"><?= task_img($e['title']) ?><img class="thumb mini" src="<?= h(photo_url($r['photo'])) ?>" alt="Foto" loading="lazy"></a>
-              <?php else: ?><?= task_img($e['title']) ?><?php endif; ?>
+              <?php $tid = $r['task_id'] === null ? null : (int)$r['task_id']; ?>
+              <?php if ($r['photo']): ?><a href="<?= h(photo_url($r['photo'])) ?>" target="_blank" class="tpic"><?= task_img($e['title'], 'ticon', $tid) ?><img class="thumb mini" src="<?= h(photo_url($r['photo'])) ?>" alt="Foto" loading="lazy"></a>
+              <?php else: ?><?= task_img($e['title'], 'ticon', $tid) ?><?php endif; ?>
             <?php else: ?>
               <span class="gift" aria-hidden="true">🎁</span>
             <?php endif; ?>

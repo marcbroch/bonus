@@ -317,3 +317,53 @@ details[open].avatars summary h2::after { content: "▴"; }
 .avatar-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: .45rem; margin-top: .9rem; }
 .avatar-pick button { font-size: 1.7rem; aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--line); background: var(--field); cursor: pointer; padding: 0; }
 .avatar-pick button.on { border-color: var(--blue); background: #eaf6fe; }
+
+/* ---------- Startseite: Punkte verfallen nicht ---------- */
+.hero .keep { font-size: .85rem; font-weight: 500; color: #6b4a00; margin-top: .1rem; }
+
+/* ---------- Wochenwertung ---------- */
+.week-head { display: flex; align-items: center; gap: .5rem; text-align: center; margin-bottom: .5rem; }
+.week-head > div { flex: 1; }
+.week-head h2 { margin: 0; }
+.wnav { width: 2.4rem; height: 2.4rem; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--field); border: 3px solid var(--line); text-decoration: none; font-size: 1.4rem; font-weight: 700; color: var(--ink); }
+.wnav.off { visibility: hidden; }
+.board { list-style: none; margin: 0; padding: 0; }
+.board li { display: flex; align-items: center; gap: .55rem; padding: .45rem .3rem; border-radius: 14px; }
+.board li.me { background: #fff7d6; }
+.rank { width: 1.8rem; text-align: center; font-weight: 700; color: var(--muted); font-size: 1.05rem; flex: none; }
+.board .grow { min-width: 0; }
+.bar { height: 10px; background: #eef0f7; border-radius: 99px; overflow: hidden; margin-top: .2rem; }
+.bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--sun), var(--brand)); min-width: 4px; }
+.wpts { text-align: right; white-space: nowrap; font-size: .9rem; display: flex; flex-direction: column; line-height: 1.15; }
+.wpts b { font-size: 1.2rem; }
+.wpts small { color: var(--muted); font-size: .75rem; }
+.week .note { margin: .6rem 0 0; font-size: .85rem; }
+
+/* ---------- Aufgaben-Kacheln auf der Startseite ---------- */
+.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+@media (min-width: 560px) { .quick { grid-template-columns: repeat(4, 1fr); } }
+.qtask { display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .6rem .3rem; border-radius: 18px; text-align: center;
+  background: var(--field); border: 3px solid var(--line); text-decoration: none; color: var(--ink); transition: transform .12s; }
+.qtask:active { transform: scale(.96); }
+.qtask b { font-size: .92rem; line-height: 1.15; }
+.qtask span { font-size: .78rem; font-weight: 600; color: #8a5a00; background: var(--sun); border-radius: 99px; padding: 0 .5rem; }
+.taskpick.tiles .task .tkey { font-weight: 700; font-size: 1.1rem; line-height: 1.1; }
+.taskpick.tiles .task .tname { font-size: .82rem; color: var(--muted); }
+
+/* ---------- Foto (Pflicht) ---------- */
+.photo-box { border: 3px dashed var(--blue); border-radius: 20px; background: #eaf6fe; padding: .9rem; margin: .4rem 0 1rem; text-align: center; }
+.photo-box.has-photo { border-style: solid; border-color: var(--green); background: #eafbe9; }
+.photo-box.missing { border-color: var(--err); background: #ffecea; animation: wiggle .6s ease-in-out 1; }
+.photo-box .photo-preview { width: 100%; max-height: 300px; object-fit: contain; border-radius: 14px; margin-bottom: .6rem; }
+.photo-box .photo-hint { margin: 0 0 .7rem; font-weight: 600; color: var(--blue-dark); font-size: 1rem; }
+.photo-btns { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.photo-btn { position: relative; overflow: hidden; margin: 0; padding: .8rem .5rem; font-size: 1rem; }
+.photo-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; width: 100%; height: 100%; }
+@media (max-width: 360px) { .photo-btns { grid-template-columns: 1fr; } }
+
+/* ---------- Verwalten: Aufgabe bearbeiten ---------- */
+.te-top { display: flex; gap: .8rem; align-items: center; }
+.te-top .ticon.big { width: 76px; height: 76px; }
+.te-top label { margin: .3rem 0; }
+.te-active { align-self: end; margin-bottom: 1rem; }

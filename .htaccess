@@ -1,5 +1,8 @@
 # Brochhaus-Bonus
 DirectoryIndex index.php
+
+# Comic-Bilder als Bild ausliefern
+AddType image/svg+xml .svg
 Options -Indexes
 
 # Fotos von bis zu 15 MB erlauben (falls der Hoster das zulässt)

@@ -32,6 +32,7 @@ function page_admin(): void {
                          WHERE r.status='pending' ORDER BY r.id")->fetchAll();
     page_header('Freigaben', $me);
     ?>
+    <?php render_week_board('admin'); ?>
     <h1>Freigaben</h1>
     <?php if (!$subs && !$reds): ?><p class="card muted">Alles erledigt – nichts wartet auf Freigabe. 🎉</p><?php endif; ?>
 
@@ -60,7 +61,7 @@ function page_admin(): void {
     <?php foreach ($subs as $s): $free = $s['task_id'] !== null && $s['default_points'] === null; ?>
       <section class="card review">
         <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="proof" src="<?= h(photo_url($s['photo'])) ?>" alt="Nachweisfoto"></a><?php endif; ?>
-        <div class="rhead tline"><?= task_img($s['task_name']) ?><h2 class="grow"><?= h($s['child']) ?>: <?= h($s['task_name']) ?></h2></div>
+        <div class="rhead tline"><?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?><h2 class="grow"><?= h($s['child']) ?>: <?= h($s['task_name']) ?></h2></div>
         <p class="muted"><?= fmt_date($s['created_at']) ?></p>
         <?php if ($s['note']): ?><p class="comment">„<?= h($s['note']) ?>“</p><?php endif; ?>
         <form method="post" class="decide">
@@ -95,7 +96,8 @@ function page_admin_enter(): void {
             if (!$task) throw new RuntimeException('Bitte eine Aufgabe auswählen.');
             $points = trim((string)($_POST['points'] ?? '')) === '' ? (int)($task['points'] ?? 0) : (int)$_POST['points'];
             if ($points < 1) throw new RuntimeException('Bitte eine Punktzahl eintragen.');
-            $photo = save_photo($_FILES['photo'] ?? []);
+            $photo = photo_from_request();
+            if (!$photo) throw new RuntimeException('Bitte ein Foto als Nachweis machen oder auswählen.');
             $note = trim((string)($_POST['note'] ?? '')) ?: null;
             $ins = db()->prepare("INSERT INTO submissions (user_id, task_id, task_name, note, photo, status, points, created_at, reviewed_by, reviewed_at)
                                   VALUES (?,?,?,?,?,'approved',?,?,?,?)");
@@ -125,11 +127,7 @@ function page_admin_enter(): void {
             <?php endforeach; ?>
           </select></label>
         <label>Punkte <span class="muted">(leer = Standard der Aufgabe)</span><input name="points" type="number" min="1" max="1000" inputmode="numeric" class="js-points"></label>
-        <label class="photo-drop">
-          <input type="file" name="photo" accept="image/*" capture="environment">
-          <span class="photo-hint">📷 Foto (optional)</span>
-          <img class="photo-preview" alt="" hidden>
-        </label>
+        <?php photo_picker(); ?>
         <label>Notiz <input name="note" maxlength="300"></label>
         <button class="btn primary block">Eintragen</button>
       </form>
@@ -182,7 +180,7 @@ function page_admin_overview(): void {
         <?php foreach ($rows as $s): ?>
           <li>
             <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="thumb" src="<?= h(photo_url($s['photo'])) ?>" alt="" loading="lazy"></a>
-            <?php else: ?><?= task_img($s['task_name']) ?><?php endif; ?>
+            <?php else: ?><?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?><?php endif; ?>
             <div class="grow"><b><?= h($s['child']) ?>:</b> <?= h($s['task_name']) ?><br><span class="muted"><?= fmt_date($s['created_at']) ?></span>
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
@@ -235,16 +233,18 @@ function page_admin_settings(): void {
                 case 'save_task':
                     if ($name === '') throw new RuntimeException('Der Aufgabenname darf nicht leer sein.');
                     $pts = trim((string)($_POST['points'] ?? ''));
-                    $pdo->prepare('UPDATE tasks SET name=?, points=?, active=?, sort=? WHERE id=?')
-                        ->execute([$name, $pts === '' ? null : max(1, (int)$pts), isset($_POST['active']) ? 1 : 0, (int)($_POST['sort'] ?? 0), $id]);
+                    [$icon, $kw] = task_icon_keyword($name);
+                    $pdo->prepare('UPDATE tasks SET name=?, keyword=?, icon=?, points=?, active=?, sort=? WHERE id=?')
+                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), isset($_POST['active']) ? 1 : 0, (int)($_POST['sort'] ?? 0), $id]);
                     flash('Aufgabe gespeichert.');
                     break;
                 case 'add_task':
                     if ($name === '') throw new RuntimeException('Bitte einen Aufgabennamen eingeben.');
                     $pts = trim((string)($_POST['points'] ?? ''));
                     $sort = (int)$pdo->query('SELECT COALESCE(MAX(sort),0)+1 FROM tasks')->fetchColumn();
-                    $pdo->prepare('INSERT INTO tasks (name, points, sort) VALUES (?,?,?)')
-                        ->execute([$name, $pts === '' ? null : max(1, (int)$pts), $sort]);
+                    [$icon, $kw] = task_icon_keyword($name);
+                    $pdo->prepare('INSERT INTO tasks (name, keyword, icon, points, sort) VALUES (?,?,?,?,?)')
+                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), $sort]);
                     flash('Aufgabe hinzugefügt.');
                     break;
                 case 'save_reward':
@@ -337,32 +337,61 @@ function settings_people(array $me): void {
     <?php
 }
 
+// Stichwort und Bild aus dem Formular, leer = automatisch vorschlagen
+function task_icon_keyword(string $name): array {
+    $icon = (string)($_POST['icon'] ?? '');
+    if (!isset(TASK_ICONS[$icon])) $icon = guess_icon($name);
+    $kw = trim((string)($_POST['keyword'] ?? ''));
+    return [$icon, $kw !== '' ? mb_substr($kw, 0, 30) : guess_keyword($name, $icon)];
+}
+
+function icon_select(string $current): string {
+    $out = '<select name="icon" class="js-icon-select" aria-label="Bild">';
+    foreach (TASK_ICONS as $key => $label) {
+        $out .= '<option value="' . h($key) . '"' . ($key === $current ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+    return $out . '</select>';
+}
+
 function settings_tasks(): void {
     $tasks = db()->query('SELECT * FROM tasks ORDER BY sort, id')->fetchAll();
     ?>
-    <p class="muted">Punkte leer lassen = „Eltern entscheiden“ (wie bei „Sonstige Aufgabe“). Ausgeblendete Aufgaben sehen die Kinder nicht.
-      Das Bild sucht die App anhand des Namens aus (z. B. „Müll“, „Rasen“, „Keller“) – sonst gibt es einen Stern.</p>
-    <section class="card">
-      <div class="tasktable">
-        <div class="tt-head"><span>Reihenf.</span><span>Aufgabe</span><span>Punkte</span><span>Aktiv</span><span></span></div>
-        <?php foreach ($tasks as $t): ?>
-          <form method="post" class="tt-row">
-            <?= csrf_field() ?><input type="hidden" name="s" value="tasks"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
-            <input name="sort" type="number" value="<?= (int)$t['sort'] ?>" class="sm" aria-label="Reihenfolge">
-            <span class="tt-name"><?= task_img($t['name'], 'ticon mini') ?><input name="name" value="<?= h($t['name']) ?>" required aria-label="Aufgabe"></span>
-            <input name="points" type="number" min="1" value="<?= $t['points'] === null ? '' : (int)$t['points'] ?>" placeholder="frei" class="sm" aria-label="Punkte">
-            <input type="checkbox" name="active" <?= $t['active'] ? 'checked' : '' ?> aria-label="Aktiv">
-            <button class="btn tiny primary" name="action" value="save_task">✓</button>
-          </form>
-        <?php endforeach; ?>
-      </div>
-    </section>
-    <form method="post" class="card setting">
+    <p class="muted">Jede Aufgabe hat ein <b>Stichwort</b> (groß auf der Kachel) und ein <b>Bild</b>. Punkte leer lassen = „Eltern entscheiden“.
+      Ausgeblendete Aufgaben sehen die Kinder nicht.</p>
+    <script>window.TASK_ICON_SRC = <?= json_encode(array_combine(array_keys(TASK_ICONS), array_map('icon_src', array_keys(TASK_ICONS)))) ?>;</script>
+    <?php foreach ($tasks as $t): ?>
+      <form method="post" class="card setting taskedit">
+        <?= csrf_field() ?><input type="hidden" name="s" value="tasks"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
+        <div class="te-top">
+          <?= icon_img($t['icon'], 'ticon big js-icon-preview') ?>
+          <div class="grow">
+            <label>Stichwort<input name="keyword" value="<?= h($t['keyword']) ?>" maxlength="30" required></label>
+            <label>Bild<?= icon_select((string)$t['icon']) ?></label>
+          </div>
+        </div>
+        <label>Beschreibung<input name="name" value="<?= h($t['name']) ?>" required></label>
+        <div class="grid3">
+          <label>Punkte<input name="points" type="number" min="1" value="<?= $t['points'] === null ? '' : (int)$t['points'] ?>" placeholder="frei" inputmode="numeric"></label>
+          <label>Reihenfolge<input name="sort" type="number" value="<?= (int)$t['sort'] ?>" inputmode="numeric"></label>
+          <label class="check te-active"><input type="checkbox" name="active" <?= $t['active'] ? 'checked' : '' ?>> Aktiv</label>
+        </div>
+        <button class="btn primary" name="action" value="save_task">Speichern</button>
+      </form>
+    <?php endforeach; ?>
+    <form method="post" class="card setting taskedit">
       <?= csrf_field() ?><input type="hidden" name="s" value="tasks">
       <h2>Neue Aufgabe</h2>
+      <div class="te-top">
+        <?= icon_img('sonstige', 'ticon big js-icon-preview') ?>
+        <div class="grow">
+          <label>Stichwort <span class="muted">(leer = Vorschlag)</span><input name="keyword" maxlength="30" placeholder="z. B. Fenster"></label>
+          <label>Bild<select name="icon" class="js-icon-select" aria-label="Bild"><option value="">automatisch wählen</option>
+            <?php foreach (TASK_ICONS as $key => $label): ?><option value="<?= h($key) ?>"><?= h($label) ?></option><?php endforeach; ?></select></label>
+        </div>
+      </div>
       <div class="grid2">
-        <label>Aufgabe<input name="name" required></label>
-        <label>Punkte <span class="muted">(leer = frei)</span><input name="points" type="number" min="1"></label>
+        <label>Beschreibung<input name="name" required placeholder="z. B. Fenster putzen"></label>
+        <label>Punkte <span class="muted">(leer = frei)</span><input name="points" type="number" min="1" inputmode="numeric"></label>
       </div>
       <button class="btn primary" name="action" value="add_task">Hinzufügen</button>
     </form>
