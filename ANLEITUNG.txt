@@ -71,6 +71,12 @@ ihr unter "Verwalten" > "Aufgaben".
 Unter "Verwalten" könnt ihr Aufgaben, Punkte, Belohnungen und Kurse
 jederzeit ändern – auch pro Kind (z. B. andere Belohnungen für Bent).
 
+Bestätigt ist bestätigt? Nicht ganz: Unter "Verwalten" > "Bestätigt"
+könnt ihr bereits bestätigte Aufgaben und Auszahlungen nachträglich
+ändern (Aufgabe, Punkte, Kommentar bzw. Anzahl, Art der Auszahlung)
+oder entfernen. Der Stift ✏️ in der "Übersicht" führt direkt dorthin.
+Beim Entfernen einer Aufgabe wird auch ihr Foto gelöscht.
+
 Datensicherung (wichtig!)
 -------------------------
 Alle Daten liegen in zwei Ordnern:

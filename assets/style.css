@@ -412,3 +412,16 @@ details[open].avatars summary h2::after { content: "▴"; }
 .cel-stickers { display: flex; flex-wrap: wrap; justify-content: center; gap: .9rem .5rem; margin: .6rem 0 1rem; }
 .cel-card .btn.block { margin: .8rem 0 0; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Verwalten > Bestätigt ---------- */
+.kidfilter a { display: inline-flex; align-items: center; gap: .3rem; }
+.kidfilter .avatar { font-size: .8rem; }
+.entry { padding: .9rem 1rem; }
+.entry-head { display: flex; align-items: center; gap: .7rem; }
+.entry-head .grow { min-width: 0; }
+.entry details { margin-top: .6rem; border-top: 2px dashed var(--line); padding-top: .5rem; }
+.entry summary { cursor: pointer; font-weight: 600; color: var(--blue-dark); list-style: none; }
+.entry summary::-webkit-details-marker { display: none; }
+.entry details[open] summary { margin-bottom: .3rem; }
+.btn.danger { background: #fff; border-color: #ffc0bb; color: var(--err); box-shadow: 0 4px 0 #ffc0bb; }
+.entry:target { outline: 4px solid var(--sun); outline-offset: 2px; }

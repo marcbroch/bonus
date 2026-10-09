@@ -481,7 +481,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=8">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <header class="top">

@@ -49,6 +49,16 @@ if grep -q "js-celebrate" "$TMP/page"; then echo "FEHLER  Konfetti-Karte erschei
 get "$K" "p=account"
 grep -q "Mein Sammelalbum" "$TMP/page" && grep -q "1 von 21 Stickern" "$TMP/page" && echo "ok      Sammelalbum" || { echo "FEHLER  Sammelalbum fehlt oder zählt falsch"; FAIL=1; }
 
+# Verwalten > Bestätigt: Eintrag ändern und entfernen
+get "$P" "p=admin_settings&s=entries"
+post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=entries" -d "id=1" -d "task_id=1" -d "points=15" -d "comment=Toll" -d "action=edit_sub"
+get "$P" "p=account&u=1"
+grep -q "+15" "$TMP/page" && grep -q "Toll" "$TMP/page" && echo "ok      Bestätigten Eintrag ändern" || { echo "FEHLER  Ändern hat nicht geklappt"; FAIL=1; }
+get "$P" "p=admin_settings&s=entries"
+post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=entries" -d "id=1" -d "action=delete_sub"
+get "$P" "p=account&u=1"
+grep -q "Noch keine Buchungen" "$TMP/page" && echo "ok      Bestätigten Eintrag entfernen" || { echo "FEHLER  Entfernen hat nicht geklappt"; FAIL=1; }
+
 # Passwort ändern: falsches altes Passwort wird abgelehnt, richtiges klappt, neues gilt beim Anmelden
 get "$K" "p=password"
 post "$K" "p=password" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "old=falsch" -d "new=neu4567" -d "new2=neu4567"
