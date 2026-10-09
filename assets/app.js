@@ -22,28 +22,51 @@
     if (pw) setTimeout(() => { pw.focus(); pw.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 50);
   }));
 
+  // Verwalten > Aufgaben: Bildvorschau beim Wechseln des Bildes
+  document.querySelectorAll('.js-icon-select').forEach(sel => sel.addEventListener('change', () => {
+    const img = sel.closest('form').querySelector('.js-icon-preview');
+    const src = (window.TASK_ICON_SRC || {})[sel.value || 'sonstige'];
+    if (img && src) img.src = src;
+  }));
+
   document.querySelectorAll('.js-photo-form').forEach(form => {
-    const input = form.querySelector('input[type=file]');
-    const prev = form.querySelector('.photo-preview');
-    const hint = form.querySelector('.photo-hint');
-    if (input) input.addEventListener('change', async () => {
+    // Foto: "Foto machen" (Kamera) oder "Aus Fotos wählen" (Mediathek) – eins von beiden ist Pflicht
+    const box = form.querySelector('.js-photo-box');
+    const inputs = box ? [...box.querySelectorAll('input[type=file]')] : [];
+    const prev = box && box.querySelector('.photo-preview');
+    const hint = box && box.querySelector('.photo-hint');
+    inputs.forEach(input => input.addEventListener('change', async () => {
       const f = input.files[0];
       if (!f) return;
+      inputs.forEach(other => { if (other !== input) other.value = ''; });
       const small = await shrink(f);
       if (small !== f && window.DataTransfer) {
         const dt = new DataTransfer(); dt.items.add(small); input.files = dt.files;
       }
-      prev.src = URL.createObjectURL(small); prev.hidden = false; if (hint) hint.hidden = true;
-    });
+      prev.src = URL.createObjectURL(small); prev.hidden = false;
+      box.classList.add('has-photo'); box.classList.remove('missing');
+      if (hint) hint.textContent = '✅ Foto ist dabei. Du kannst es noch austauschen.';
+    }));
 
     // Bei "Sonstige Aufgabe" ist die Notiz Pflicht
     const note = form.querySelector('textarea[name=note]');
     const noteHint = form.querySelector('.js-note-hint');
-    form.querySelectorAll('input[name=task_id]').forEach(r => r.addEventListener('change', () => {
+    const freeChanged = r => {
       const free = r.dataset.free === '1';
       if (note) { note.required = free; note.placeholder = free ? 'Was genau hast du gemacht?' : 'z. B. alle drei Mülltonnen'; }
       if (noteHint) noteHint.textContent = free ? '(bitte ausfüllen)' : '(optional)';
-    }));
+    };
+    form.querySelectorAll('input[name=task_id]').forEach(r => {
+      r.addEventListener('change', () => {
+        freeChanged(r);
+        if (box) setTimeout(() => box.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150);
+      });
+      if (r.checked) freeChanged(r);
+    });
+    // Über eine Kachel auf der Startseite gekommen: gleich zum Foto springen
+    if (box && form.querySelector('input[name=task_id]:checked')) {
+      setTimeout(() => box.scrollIntoView({ block: 'center' }), 100);
+    }
 
     // Eltern: Standardpunkte als Platzhalter zeigen
     const sel = form.querySelector('.js-task-select'), pts = form.querySelector('.js-points');
@@ -53,8 +76,16 @@
       pts.required = !p;
     });
 
-    // Doppeltes Absenden verhindern
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', e => {
+      // Ohne Foto nicht absenden
+      if (box && !inputs.some(i => i.files && i.files.length)) {
+        e.preventDefault();
+        box.classList.add('missing');
+        if (hint) hint.textContent = '📸 Bitte zuerst ein Foto machen oder auswählen.';
+        box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+      }
+      // Doppeltes Absenden verhindern
       const b = form.querySelector('button.primary'); if (b) setTimeout(() => { b.disabled = true; b.textContent = 'Wird gesendet …'; }, 0);
     });
   });

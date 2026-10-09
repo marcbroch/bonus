@@ -99,6 +99,16 @@ function init_schema(PDO $pdo): void {
     // Migration für bestehende Datenbanken: Profilbild je Person
     $cols = array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name');
     if (!in_array('avatar', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN avatar TEXT');
+    // Migration: Stichwort und Bild je Aufgabe, für vorhandene Aufgaben automatisch vorschlagen
+    $cols = array_column($pdo->query('PRAGMA table_info(tasks)')->fetchAll(), 'name');
+    if (!in_array('icon', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN icon TEXT');
+    if (!in_array('keyword', $cols, true)) $pdo->exec('ALTER TABLE tasks ADD COLUMN keyword TEXT');
+    $missing = $pdo->query('SELECT id, name, icon, keyword FROM tasks WHERE icon IS NULL OR keyword IS NULL')->fetchAll();
+    $upd = $pdo->prepare('UPDATE tasks SET icon=?, keyword=? WHERE id=?');
+    foreach ($missing as $t) {
+        $icon = $t['icon'] ?: guess_icon($t['name']);
+        $upd->execute([$icon, $t['keyword'] ?: guess_keyword($t['name'], $icon), $t['id']]);
+    }
 }
 
 function is_installed(): bool {
@@ -118,8 +128,11 @@ function seed_defaults(): void {
             ['Rasenmähen', 40], ['Hecke schneiden', 50], ['Keller aufräumen', 50],
             ['Sonstige Aufgabe', null],
         ];
-        $st = $pdo->prepare('INSERT INTO tasks (name, points, sort) VALUES (?,?,?)');
-        foreach ($tasks as $i => $t) $st->execute([$t[0], $t[1], $i]);
+        $st = $pdo->prepare('INSERT INTO tasks (name, keyword, icon, points, sort) VALUES (?,?,?,?,?)');
+        foreach ($tasks as $i => $t) {
+            $icon = guess_icon($t[0]);
+            $st->execute([$t[0], guess_keyword($t[0], $icon), $icon, $t[1], $i]);
+        }
     }
     if ((int)$pdo->query('SELECT COUNT(*) FROM rewards')->fetchColumn() === 0) {
         $st = $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, sort) VALUES (?,?,?,?)');
@@ -217,11 +230,21 @@ function avatar(array $u, string $size = ''): string {
     return '<span class="avatar ' . h($size) . ' av' . ((int)$u['id'] % 6) . '" aria-hidden="true">' . avatar_of($u) . '</span>';
 }
 
-// ---------- Comic-Bild zur Aufgabe (nach Stichwort im Namen) ----------
-function task_icon(string $name): string {
+// ---------- Comic-Bilder der Aufgaben ----------
+// Bild-Schlüssel => vorgeschlagenes Stichwort. Die Bilder liegen in assets/tasks/.
+const TASK_ICONS = [
+    'muell' => 'Müll', 'waesche-runter' => 'Wäsche runter', 'waesche-hoch' => 'Wäsche hoch',
+    'treppe' => 'Treppe', 'geschirr' => 'Geschirr', 'zimmer' => 'Zimmer', 'auto' => 'Auto saugen',
+    'garten' => 'Garten', 'carport' => 'Carport', 'regal' => 'Regal', 'schuppen' => 'Schuppen',
+    'beete' => 'Beete', 'rasen' => 'Rasen mähen', 'hecke' => 'Hecke', 'keller' => 'Keller',
+    'sonstige' => 'Sonstiges',
+];
+
+// Passendes Bild anhand des Aufgabennamens vorschlagen
+function guess_icon(string $name): string {
     $n = mb_strtolower($name);
-    $map = [
-        'waesche-hoch'   => fn($n) => str_contains($n, 'wäsche') && (str_contains($n, 'hoch') || str_contains($n, 'aus dem')),
+    if (str_contains($n, 'wäsche') && (str_contains($n, 'hoch') || str_contains($n, 'aus dem'))) return 'waesche-hoch';
+    $words = [
         'waesche-runter' => ['wäsche'],
         'muell'          => ['müll', 'tonne', 'altpapier'],
         'geschirr'       => ['geschirr', 'spülmaschine', 'spüler', 'tisch decken', 'tisch abräumen', 'küche', 'abwasch'],
@@ -237,14 +260,116 @@ function task_icon(string $name): string {
         'treppe'         => ['treppe', 'flur', 'schuhe'],
         'keller'         => ['keller', 'dachboden', 'karton'],
     ];
-    foreach ($map as $icon => $test) {
-        $hit = is_callable($test) ? $test($n) : (bool)array_filter($test, fn($w) => str_contains($n, $w));
-        if ($hit) return "assets/tasks/$icon.svg";
+    foreach ($words as $icon => $list) {
+        foreach ($list as $w) if (str_contains($n, $w)) return $icon;
     }
-    return 'assets/tasks/sonstige.svg';
+    return 'sonstige';
 }
-function task_img(string $name, string $class = 'ticon'): string {
-    return '<img class="' . $class . '" src="' . task_icon($name) . '" alt="" loading="lazy">';
+function guess_keyword(string $name, string $icon): string {
+    if ($icon !== 'sonstige') return TASK_ICONS[$icon];
+    $first = preg_split('/[\s(,]+/u', trim($name))[0] ?? '';
+    return mb_strtolower($first) === 'sonstige' || $first === '' ? 'Sonstiges' : mb_substr($first, 0, 20);
+}
+
+// Bild direkt in die Seite einbetten (kein eigener Abruf nötig, funktioniert auf jedem Server)
+function icon_src(string $icon): string {
+    static $cache = [];
+    if (!isset(TASK_ICONS[$icon])) $icon = 'sonstige';
+    if (!isset($cache[$icon])) {
+        $svg = @file_get_contents(APP_DIR . "/assets/tasks/$icon.svg");
+        $cache[$icon] = $svg ? 'data:image/svg+xml;base64,' . base64_encode($svg) : "assets/tasks/$icon.svg";
+    }
+    return $cache[$icon];
+}
+function icon_img(?string $icon, string $class = 'ticon'): string {
+    return '<img class="' . h($class) . '" src="' . icon_src((string)$icon) . '" alt="">';
+}
+
+// Bild zu einer Aufgabe bzw. gemeldeten Aufgabe (über task_id, sonst über den Namen)
+function task_info(?int $taskId): ?array {
+    static $tasks = null;
+    if ($tasks === null) {
+        $tasks = [];
+        foreach (db()->query('SELECT id, name, keyword, icon FROM tasks')->fetchAll() as $t) $tasks[(int)$t['id']] = $t;
+    }
+    return $taskId !== null ? ($tasks[$taskId] ?? null) : null;
+}
+function task_img(string $name, string $class = 'ticon', ?int $taskId = null): string {
+    $t = task_info($taskId);
+    return icon_img($t['icon'] ?? guess_icon($name), $class);
+}
+
+// ---------- Wochenwertung (Mo–So). Die Punkte bleiben trotzdem auf dem Konto. ----------
+function week_bounds(int $offset = 0): array {
+    $monday = (new DateTimeImmutable('today'))->modify('-' . ((int)date('N') - 1) . ' days')->modify(($offset >= 0 ? '+' : '') . ($offset * 7) . ' days');
+    return [$monday, $monday->modify('+7 days')];
+}
+function week_board(int $offset = 0): array {
+    [$from, $to] = week_bounds($offset);
+    $st = db()->prepare("SELECT COALESCE(SUM(points),0) AS pts, COUNT(*) AS cnt FROM submissions
+                         WHERE user_id=? AND status='approved' AND created_at >= ? AND created_at < ?");
+    $rows = [];
+    foreach (children() as $k) {
+        $st->execute([$k['id'], $from->format('Y-m-d 00:00:00'), $to->format('Y-m-d 00:00:00')]);
+        $r = $st->fetch();
+        $rows[] = ['user' => $k, 'points' => (int)$r['pts'], 'count' => (int)$r['cnt']];
+    }
+    usort($rows, fn($a, $b) => [$b['points'], $a['user']['sort']] <=> [$a['points'], $b['user']['sort']]);
+    return $rows;
+}
+function render_week_board(string $page, ?array $me = null): void {
+    $w = min(0, max(-52, (int)($_GET['w'] ?? 0)));
+    [$from, $to] = week_bounds($w);
+    $rows = week_board($w);
+    $max = max(1, ...array_map(fn($r) => $r['points'], $rows));
+    $medals = ['🥇', '🥈', '🥉'];
+    $link = fn(int $x) => 'index.php?p=' . $page . ($x ? '&w=' . $x : '');
+    ?>
+    <section class="card week">
+      <div class="week-head">
+        <a class="wnav" href="<?= $link($w - 1) ?>" aria-label="Woche davor">‹</a>
+        <div><h2>🏆 <?= $w === 0 ? 'Diese Woche' : ($w === -1 ? 'Letzte Woche' : 'KW ' . $from->format('W')) ?></h2>
+          <span class="muted">Mo <?= $from->format('d.m.') ?> – So <?= $to->modify('-1 day')->format('d.m.Y') ?></span></div>
+        <?php if ($w < 0): ?><a class="wnav" href="<?= $link($w + 1) ?>" aria-label="Woche danach">›</a><?php else: ?><span class="wnav off"></span><?php endif; ?>
+      </div>
+      <ol class="board">
+        <?php foreach ($rows as $i => $r): $u = $r['user']; ?>
+          <li class="<?= $me && (int)$me['id'] === (int)$u['id'] ? 'me' : '' ?>">
+            <span class="rank"><?= $r['points'] > 0 && $i < 3 ? $medals[$i] : ($i + 1) . '.' ?></span>
+            <?= avatar($u) ?>
+            <div class="grow"><b><?= h($u['name']) ?></b>
+              <div class="bar"><span style="width:<?= (int)round($r['points'] / $max * 100) ?>%"></span></div></div>
+            <span class="wpts"><span><b><?= $r['points'] ?></b> P.</span><small><?= $r['count'] ?> Aufg.</small></span>
+          </li>
+        <?php endforeach; ?>
+      </ol>
+      <p class="muted note">Die Wochenwertung zeigt nur, wer wie fleißig war. Alle Punkte bleiben auf dem Konto – sie verfallen nie. 💰</p>
+    </section>
+    <?php
+}
+
+// ---------- Foto: Kamera oder Fotomediathek (Pflicht als Nachweis) ----------
+function photo_picker(): void {
+    ?>
+    <div class="photo-box js-photo-box">
+      <img class="photo-preview" alt="Vorschau" hidden>
+      <p class="photo-hint">📸 Mach ein Foto als Nachweis – ohne Foto geht’s nicht.</p>
+      <div class="photo-btns">
+        <label class="btn primary photo-btn">📷 Foto machen
+          <input type="file" name="photo" accept="image/*" capture="environment"></label>
+        <label class="btn photo-btn">🖼️ Aus Fotos wählen
+          <input type="file" name="photo_lib" accept="image/*"></label>
+      </div>
+    </div>
+    <?php
+}
+// ---------- Foto aus dem Formular (Kamera oder Fotomediathek) ----------
+function photo_from_request(): ?string {
+    foreach (['photo', 'photo_lib'] as $field) {
+        $name = save_photo($_FILES[$field] ?? []);
+        if ($name) return $name;
+    }
+    return null;
 }
 
 // ---------- Konto: alle Buchungen eines Kindes ----------
@@ -335,7 +460,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=3">
+<link rel="stylesheet" href="assets/style.css?v=4">
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
 <script type="text/javascript">//<![CDATA[
 var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
@@ -375,7 +500,7 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=3"></script>
+<script src="assets/app.js?v=4"></script>
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 2 -->
 <div class="seal">
 <script language="JavaScript" type="text/javascript">

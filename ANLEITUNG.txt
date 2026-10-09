@@ -44,8 +44,17 @@ Kind:   "Mein Konto" zeigt alle Punkte, Einlösungen und Auszahlungen.
 Eltern: Unter "Übersicht" auf einen Namen tippen = Konto des Kindes.
 
 Auf der Startseite tippt jede Person auf ihr Profil und gibt dann
-ihr Passwort ein. Die Comic-Bilder zu den Aufgaben sucht die App
-anhand des Namens aus (z. B. "Müll", "Rasen", "Keller").
+ihr Passwort ein.
+
+Nach dem Anmelden zeigt die Wochenwertung, wer von Montag bis
+Sonntag wie viele Punkte gesammelt hat (mit ‹ zu früheren Wochen).
+Die Punkte verfallen nie, sie bleiben auf dem Konto.
+
+Jede Aufgabe braucht ein Foto: "Foto machen" öffnet am iPhone
+direkt die Kamera, "Aus Fotos wählen" die Fotomediathek.
+
+Jede Aufgabe hat ein Stichwort und ein Comic-Bild. Beides ändert
+ihr unter "Verwalten" > "Aufgaben".
 
 Unter "Verwalten" könnt ihr Aufgaben, Punkte, Belohnungen und Kurse
 jederzeit ändern – auch pro Kind (z. B. andere Belohnungen für Bent).
