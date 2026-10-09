@@ -250,3 +250,70 @@ label.inline { display: flex; align-items: center; gap: .5rem; } label.inline in
 @keyframes wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-6deg); } }
 @keyframes pop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- Profilbilder ---------- */
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 2.1em; height: 2.1em; border-radius: 50%;
+  font-size: 1rem; line-height: 1; border: 2px solid #fff; box-shadow: 0 2px 0 rgba(0,0,0,.12); vertical-align: middle; flex: none; }
+.avatar.big { font-size: 2.3rem; border-width: 4px; box-shadow: 0 4px 0 rgba(0,0,0,.14); }
+.av0 { background: #ffd0db; } .av1 { background: #ffe0bf; } .av2 { background: #fff1a8; }
+.av3 { background: #c8f0cf; } .av4 { background: #c9e8fb; } .av5 { background: #e3d3fb; }
+.hero .avatar.big { margin-bottom: .3rem; }
+
+/* Startseite: Profil auswählen */
+.profiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .7rem; margin: .5rem 0 1rem; }
+.profile { margin: 0; }
+.profile input { position: absolute; opacity: 0; }
+.ptile { display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .9rem .4rem .75rem; border-radius: 20px; cursor: pointer;
+  background: var(--field); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--line); transition: transform .12s; text-align: center; }
+.ptile:hover { transform: translateY(-2px); }
+.pname { font-weight: 600; font-size: 1.1rem; }
+.prole { font-size: .78rem; font-weight: 600; color: var(--muted); background: #fff; border: 2px dashed var(--line); border-radius: 99px; padding: 0 .55rem; }
+.profile input:checked + .ptile { background: #eaf6fe; border-color: var(--blue); box-shadow: 0 4px 0 var(--blue-dark); transform: scale(1.05) rotate(-1.5deg); }
+.profile input:checked + .ptile .avatar { animation: wiggle 1.2s ease-in-out 1; }
+.profile input:focus-visible + .ptile { outline: 3px solid var(--sun); }
+/* Passwortfeld erst zeigen, wenn ein Profil gewählt ist (nur wenn der Browser :has kann) */
+@supports selector(:has(*)) {
+  .js-login:not(:has(input[name=uid]:checked)) .pw-box { display: none; }
+  .pw-box { animation: pop .35s cubic-bezier(.2, 1.6, .4, 1); }
+}
+
+/* ---------- Comic-Bilder der Aufgaben ---------- */
+.ticon { width: 48px; height: 48px; flex: none; display: block; }
+.ticon.big { width: 64px; height: 64px; }
+.ticon.mini { width: 34px; height: 34px; }
+.taskpick.tiles { grid-template-columns: 1fr 1fr; }
+.taskpick.tiles .task { flex-direction: column; text-align: center; gap: .35rem; padding: .8rem .5rem .7rem; position: relative; }
+.taskpick.tiles .task input { position: absolute; top: .55rem; left: .55rem; }
+.taskpick.tiles .task .tname { line-height: 1.2; font-size: .95rem; }
+.taskpick.tiles .task:has(input:checked) .ticon { animation: wiggle 1.2s ease-in-out 1; }
+@media (min-width: 560px) { .taskpick.tiles { grid-template-columns: repeat(3, 1fr); } }
+.tline { align-items: center; flex-wrap: nowrap; }
+.tline h2 { margin: 0; }
+.kid { display: inline-flex; align-items: center; gap: .4rem; text-decoration: none; }
+.tt-name { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.tt-name input { min-width: 0; }
+
+/* ---------- Konto ---------- */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-bottom: 1.1rem; }
+.stat { background: #fff; border: 3px solid #fff; border-radius: 18px; padding: .6rem .3rem; text-align: center; box-shadow: var(--shadow); }
+.stat b { display: block; font-size: 1.5rem; line-height: 1.1; }
+.stat:nth-child(1) b { color: var(--ok); } .stat:nth-child(2) b { color: var(--brand-dark); } .stat:nth-child(3) b { color: var(--purple); }
+.stat span { font-size: .85rem; color: var(--muted); }
+.gift { width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem;
+  border-radius: 50%; background: #ffe3ef; }
+.ledger li.zero { opacity: .65; }
+.tpic { position: relative; flex: none; }
+.thumb.mini { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 8px; border-width: 2px; }
+.amt { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; font-size: .82rem; flex: none; }
+.ledger .grow { min-width: 0; font-size: .95rem; line-height: 1.3; }
+.ledger li { gap: .55rem; }
+.delta { font-weight: 700; font-size: 1.1rem; }
+.delta.plus { color: var(--ok); } .delta.wait { color: var(--muted); } .delta.minus { color: var(--brand-dark); }
+details.avatars summary { cursor: pointer; list-style: none; }
+details.avatars summary::-webkit-details-marker { display: none; }
+details.avatars summary h2 { display: flex; align-items: center; gap: .5rem; margin: 0; }
+details.avatars summary h2::after { content: "▾"; margin-left: auto; color: var(--muted); }
+details[open].avatars summary h2::after { content: "▴"; }
+.avatar-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: .45rem; margin-top: .9rem; }
+.avatar-pick button { font-size: 1.7rem; aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--line); background: var(--field); cursor: pointer; padding: 0; }
+.avatar-pick button.on { border-color: var(--blue); background: #eaf6fe; }

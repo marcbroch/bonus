@@ -15,7 +15,8 @@ switch ($p) {
     case 'home':           page_home(); break;
     case 'submit':         page_submit(); break;
     case 'rewards':        page_rewards(); break;
-    case 'history':        page_history(); break;
+    case 'history':        redirect('account');
+    case 'account':        page_account(); break;
     case 'admin':          page_admin(); break;
     case 'admin_enter':    page_admin_enter(); break;
     case 'admin_overview': page_admin_overview(); break;
@@ -79,27 +80,31 @@ function page_login(): void {
         }
         $error = 'Das Passwort stimmt leider nicht.';
     }
-    $users = db()->query("SELECT id, name, role FROM users WHERE active=1 AND can_login=1 AND password_hash IS NOT NULL
+    $users = db()->query("SELECT id, name, role, avatar FROM users WHERE active=1 AND can_login=1 AND password_hash IS NOT NULL
                           ORDER BY role='parent', sort, id")->fetchAll();
     $sel = (int)($_POST['uid'] ?? 0);
     page_header('Anmelden');
     ?>
-    <section class="card narrow">
+    <section class="card narrow login">
       <img class="welcome" src="assets/welcome.jpg" alt="Die Familie Brochhaus hilft gemeinsam im Haus und Garten">
       <h1>Wer bist du? 👋</h1>
       <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
-      <form method="post">
+      <?php if (!$users): ?><p class="muted">Noch hat niemand ein Passwort. Die Eltern legen es unter „Verwalten“ fest.</p><?php endif; ?>
+      <form method="post" class="js-login">
         <?= csrf_field() ?>
-        <div class="namepick">
+        <div class="profiles">
           <?php foreach ($users as $u): ?>
-            <label class="chip <?= $u['role'] === 'parent' ? 'parent' : '' ?>">
+            <label class="profile <?= $u['role'] === 'parent' ? 'parent' : '' ?>">
               <input type="radio" name="uid" value="<?= (int)$u['id'] ?>" required <?= $sel === (int)$u['id'] ? 'checked' : '' ?>>
-              <span><?= h($u['name']) ?></span>
+              <span class="ptile"><?= avatar($u, 'big') ?><span class="pname"><?= h($u['name']) ?></span>
+                <?php if ($u['role'] === 'parent'): ?><span class="prole">Eltern</span><?php endif; ?></span>
             </label>
           <?php endforeach; ?>
         </div>
-        <label>Passwort<input name="password" type="password" required autocomplete="current-password"></label>
-        <button class="btn primary block">Los geht’s! 🚀</button>
+        <div class="pw-box">
+          <label>Dein Passwort<input name="password" type="password" required autocomplete="current-password"></label>
+          <button class="btn primary block">Los geht’s! 🚀</button>
+        </div>
       </form>
     </section>
     <?php

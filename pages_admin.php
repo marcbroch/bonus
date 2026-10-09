@@ -21,7 +21,7 @@ function page_admin(): void {
             $approve = $action === 'approve_red';
             $st = $pdo->prepare("UPDATE redemptions SET status=?, comment=?, reviewed_by=?, reviewed_at=? WHERE id=? AND status='pending'");
             $st->execute([$approve ? 'approved' : 'rejected', $comment, $me['id'], now(), $id]);
-            flash($approve ? 'Einlösung bestätigt.' : 'Einlösung abgelehnt, Punkte sind zurück.');
+            flash($approve ? 'Als ausgezahlt eingetragen.' : 'Einlösung abgelehnt, Punkte sind zurück.');
         }
         redirect('admin');
     }
@@ -38,24 +38,29 @@ function page_admin(): void {
     <?php if ($reds): ?><h2>Einlösungen</h2><?php endif; ?>
     <?php foreach ($reds as $r): ?>
       <section class="card review">
-        <div class="rhead"><h2><?= h($r['child']) ?>: <?= h($r['amount_text']) ?> <?= h($r['reward_name']) ?></h2><span class="rate"><?= (int)$r['points'] ?> P.</span></div>
+        <div class="rhead"><h2>🎁 <?= h($r['child']) ?>: <?= h($r['amount_text']) ?> <?= h($r['reward_name']) ?></h2><span class="rate"><?= (int)$r['points'] ?> P.</span></div>
         <p class="muted"><?= fmt_date($r['created_at']) ?> · Stand danach: <?= balance((int)$r['user_id']) ?> P.</p>
         <form method="post" class="decide">
           <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-          <input name="comment" placeholder="Kommentar (optional)" maxlength="200">
+          <input name="comment" list="payout-ways" placeholder="Wie ausgezahlt? (optional)" maxlength="200">
           <div class="row">
-            <button class="btn primary" name="action" value="approve_red">✓ Bestätigen</button>
+            <button class="btn primary" name="action" value="approve_red">✓ Ausgezahlt</button>
             <button class="btn ghost" name="action" value="reject_red">Ablehnen</button>
           </div>
         </form>
       </section>
     <?php endforeach; ?>
 
+    <datalist id="payout-ways">
+      <option value="Bar ausgezahlt"><option value="Aufs Sparbuch"><option value="Aufs Kinderkonto überwiesen">
+      <option value="Bildschirmzeit am iPhone freigeschaltet"><option value="PlayStation-Zeit freigeschaltet">
+    </datalist>
+
     <?php if ($subs): ?><h2>Erledigte Aufgaben</h2><?php endif; ?>
     <?php foreach ($subs as $s): $free = $s['task_id'] !== null && $s['default_points'] === null; ?>
       <section class="card review">
         <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="proof" src="<?= h(photo_url($s['photo'])) ?>" alt="Nachweisfoto"></a><?php endif; ?>
-        <div class="rhead"><h2><?= h($s['child']) ?>: <?= h($s['task_name']) ?></h2></div>
+        <div class="rhead tline"><?= task_img($s['task_name']) ?><h2 class="grow"><?= h($s['child']) ?>: <?= h($s['task_name']) ?></h2></div>
         <p class="muted"><?= fmt_date($s['created_at']) ?></p>
         <?php if ($s['note']): ?><p class="comment">„<?= h($s['note']) ?>“</p><?php endif; ?>
         <form method="post" class="decide">
@@ -158,11 +163,12 @@ function page_admin_overview(): void {
     ?>
     <h1>Übersicht</h1>
     <section class="card">
+      <p class="muted">Tippe auf einen Namen, um das Konto mit allen Auszahlungen zu sehen.</p>
       <table class="tbl">
         <thead><tr><th>Kind</th><th class="num">Punkte</th><th class="num">diese Woche</th><th class="num">Aufgaben</th></tr></thead>
         <tbody>
         <?php foreach ($kids as $k): $wk->execute([$k['id'], $weekStart]); $cnt->execute([$k['id'], $weekStart]); ?>
-          <tr><td><a href="index.php?p=admin_overview&u=<?= (int)$k['id'] ?>"><?= h($k['name']) ?></a></td>
+          <tr><td><a class="kid" href="index.php?p=account&u=<?= (int)$k['id'] ?>"><?= avatar($k) ?> <?= h($k['name']) ?></a></td>
               <td class="num"><b><?= balance((int)$k['id']) ?></b></td>
               <td class="num">+<?= (int)$wk->fetchColumn() ?></td>
               <td class="num"><?= (int)$cnt->fetchColumn() ?></td></tr>
@@ -175,7 +181,8 @@ function page_admin_overview(): void {
       <ul class="list">
         <?php foreach ($rows as $s): ?>
           <li>
-            <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="thumb" src="<?= h(photo_url($s['photo'])) ?>" alt="" loading="lazy"></a><?php endif; ?>
+            <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="thumb" src="<?= h(photo_url($s['photo'])) ?>" alt="" loading="lazy"></a>
+            <?php else: ?><?= task_img($s['task_name']) ?><?php endif; ?>
             <div class="grow"><b><?= h($s['child']) ?>:</b> <?= h($s['task_name']) ?><br><span class="muted"><?= fmt_date($s['created_at']) ?></span>
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
@@ -207,6 +214,9 @@ function page_admin_settings(): void {
                     if ($name === '') throw new RuntimeException('Der Name darf nicht leer sein.');
                     $pdo->prepare('UPDATE users SET name=?, can_login=?, active=? WHERE id=?')
                         ->execute([$name, isset($_POST['can_login']) ? 1 : 0, isset($_POST['active']) ? 1 : 0, $id]);
+                    if (in_array($_POST['avatar'] ?? '', AVATARS, true)) {
+                        $pdo->prepare('UPDATE users SET avatar=? WHERE id=?')->execute([$_POST['avatar'], $id]);
+                    }
                     if (($pw = (string)($_POST['password'] ?? '')) !== '') {
                         if (mb_strlen($pw) < 4) throw new RuntimeException('Das Passwort braucht mindestens 4 Zeichen.');
                         $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($pw, PASSWORD_DEFAULT), $id]);
@@ -298,11 +308,12 @@ function settings_people(array $me): void {
     <?php foreach ($people as $u): ?>
       <form method="post" class="card setting">
         <?= csrf_field() ?><input type="hidden" name="s" value="people"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
-        <div class="rhead"><b><?= $u['role'] === 'parent' ? 'Elternteil' : 'Kind' ?></b>
+        <div class="rhead"><b><?= avatar($u) ?> <?= $u['role'] === 'parent' ? 'Elternteil' : 'Kind' ?></b>
           <?php if ($u['role'] === 'child' && !$u['password_hash'] && $u['can_login']): ?><span class="pill pending">noch kein Passwort</span><?php endif; ?></div>
         <div class="grid2">
           <label>Name<input name="name" value="<?= h($u['name']) ?>" required></label>
           <label>Neues Passwort<input name="password" type="text" autocomplete="off" placeholder="unverändert"></label>
+          <label>Profilbild<select name="avatar"><?php foreach (AVATARS as $a): ?><option<?= avatar_of($u) === $a ? ' selected' : '' ?>><?= $a ?></option><?php endforeach; ?></select></label>
         </div>
         <?php if ($u['role'] === 'child'): ?>
           <label class="check"><input type="checkbox" name="can_login" <?= $u['can_login'] ? 'checked' : '' ?>> Darf sich anmelden</label>
@@ -329,7 +340,8 @@ function settings_people(array $me): void {
 function settings_tasks(): void {
     $tasks = db()->query('SELECT * FROM tasks ORDER BY sort, id')->fetchAll();
     ?>
-    <p class="muted">Punkte leer lassen = „Eltern entscheiden“ (wie bei „Sonstige Aufgabe“). Ausgeblendete Aufgaben sehen die Kinder nicht.</p>
+    <p class="muted">Punkte leer lassen = „Eltern entscheiden“ (wie bei „Sonstige Aufgabe“). Ausgeblendete Aufgaben sehen die Kinder nicht.
+      Das Bild sucht die App anhand des Namens aus (z. B. „Müll“, „Rasen“, „Keller“) – sonst gibt es einen Stern.</p>
     <section class="card">
       <div class="tasktable">
         <div class="tt-head"><span>Reihenf.</span><span>Aufgabe</span><span>Punkte</span><span>Aktiv</span><span></span></div>
@@ -337,7 +349,7 @@ function settings_tasks(): void {
           <form method="post" class="tt-row">
             <?= csrf_field() ?><input type="hidden" name="s" value="tasks"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
             <input name="sort" type="number" value="<?= (int)$t['sort'] ?>" class="sm" aria-label="Reihenfolge">
-            <input name="name" value="<?= h($t['name']) ?>" required aria-label="Aufgabe">
+            <span class="tt-name"><?= task_img($t['name'], 'ticon mini') ?><input name="name" value="<?= h($t['name']) ?>" required aria-label="Aufgabe"></span>
             <input name="points" type="number" min="1" value="<?= $t['points'] === null ? '' : (int)$t['points'] ?>" placeholder="frei" class="sm" aria-label="Punkte">
             <input type="checkbox" name="active" <?= $t['active'] ? 'checked' : '' ?> aria-label="Aktiv">
             <button class="btn tiny primary" name="action" value="save_task">✓</button>

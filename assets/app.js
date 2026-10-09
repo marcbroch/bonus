@@ -16,6 +16,12 @@
     } catch (e) { return file; }
   }
 
+  // Startseite: nach Wahl des Profils direkt ins Passwortfeld springen
+  document.querySelectorAll('.js-login input[name=uid]').forEach(r => r.addEventListener('change', () => {
+    const pw = document.querySelector('.js-login input[name=password]');
+    if (pw) setTimeout(() => { pw.focus(); pw.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 50);
+  }));
+
   document.querySelectorAll('.js-photo-form').forEach(form => {
     const input = form.querySelector('input[type=file]');
     const prev = form.querySelector('.photo-preview');
