@@ -1,0 +1,7 @@
+# Live-Daten liegen nur auf dem Server – niemals ins Repository
+data/*
+!data/.htaccess
+uploads/*
+!uploads/.htaccess
+
+.DS_Store

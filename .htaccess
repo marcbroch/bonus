@@ -1,0 +1,22 @@
+# Brochhaus-Bonus
+DirectoryIndex index.php
+Options -Indexes
+
+# Fotos von bis zu 15 MB erlauben (falls der Hoster das zulässt)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 16M
+  php_value post_max_size 20M
+</IfModule>
+
+# Interne Dateien nicht direkt abrufbar
+<FilesMatch "^(lib|pages_child|pages_admin)\.php$">
+  Require all denied
+</FilesMatch>
+
+# Immer HTTPS verwenden (auskommentieren, falls kein SSL-Zertifikat vorhanden)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>

@@ -1,0 +1,72 @@
+BROCHHAUS-BONUS – INSTALLATION
+==============================
+
+Was du brauchst
+---------------
+- Webspace mit PHP 8.1 oder neuer (bei fast allen Hostern Standard)
+- SQLite in PHP aktiviert (ist bei IONOS, Strato, all-inkl & Co. üblich)
+- Eine Subdomain oder ein Unterordner, z. B. bonus.brochhaus.name
+- SSL-Zertifikat (HTTPS) – bei den meisten Hostern kostenlos per Klick
+
+Installation in 5 Schritten
+---------------------------
+1. ZIP entpacken.
+2. Den INHALT des Ordners "brochhaus-bonus" per FTP in den Zielordner
+   auf deinem Webspace hochladen (z. B. mit FileZilla).
+   Wichtig: Die versteckten Dateien ".htaccess" mit hochladen.
+3. Die Ordner "data" und "uploads" müssen beschreibbar sein.
+   Meist ist das automatisch so. Falls nicht: im FTP-Programm
+   Rechtsklick > Dateiberechtigungen > 755 (notfalls 775).
+4. Die Adresse im Browser öffnen. Es erscheint die Einrichtung:
+   Deinen Namen und ein Passwort eingeben.
+5. Unter "Verwalten" > "Personen" für jedes Kind ein Passwort
+   vergeben und Maren als zweites Elternteil hinzufügen.
+
+Fertig. Heidi ist schon so eingestellt, dass sie sich nicht selbst
+anmeldet – für sie tragt ihr Aufgaben unter "Eintragen" ein.
+
+Auf dem Handy wie eine App nutzen
+---------------------------------
+- iPhone: Seite in Safari öffnen > Teilen-Symbol > "Zum Home-Bildschirm"
+- Android: Seite in Chrome öffnen > Menü (⋮) > "Zum Startbildschirm hinzufügen"
+Die Kinder bleiben 90 Tage angemeldet.
+
+So funktioniert es im Alltag
+----------------------------
+Kind:   "Aufgabe melden" > Aufgabe antippen > Foto machen > Einreichen
+Eltern: "Freigaben" > Foto ansehen > Bestätigen oder Ablehnen
+        (bei "Sonstige Aufgabe" tragt ihr die Punkte selbst ein)
+Kind:   "Einlösen" > Belohnung und Anzahl wählen
+Eltern: Einlösung unter "Freigaben" bestätigen – dann z. B. die
+        Bildschirmzeit am iPhone oder der PlayStation freigeben.
+
+Unter "Verwalten" könnt ihr Aufgaben, Punkte, Belohnungen und Kurse
+jederzeit ändern – auch pro Kind (z. B. andere Belohnungen für Bent).
+
+Datensicherung (wichtig!)
+-------------------------
+Alle Daten liegen in zwei Ordnern:
+- data/bonus.sqlite  (Punkte, Aufgaben, Zugänge)
+- uploads/           (alle Fotos)
+Diese beiden ab und zu per FTP herunterladen. Viele Hoster machen
+zusätzlich automatische Backups.
+
+Fotos werden dauerhaft gespeichert. Bei ca. 300 KB pro Foto und
+z. B. 20 Fotos am Tag kommen rund 2 GB pro Jahr zusammen.
+
+Sicherheit
+----------
+- Fotos sind nur nach Anmeldung sichtbar, Kinder sehen nur ihre eigenen.
+- Passwörter werden verschlüsselt gespeichert.
+- Die Datenbank ist von außen nicht abrufbar.
+
+Wenn etwas nicht klappt
+-----------------------
+- Weiße Seite oder "Fehler 500": Prüfen, ob PHP 8.1+ eingestellt ist
+  (im Kundenmenü des Hosters). Falls es an der .htaccess liegt, die
+  Zeilen zu "php_value" oder "RewriteRule" mit # auskommentieren.
+- Endlos-Weiterleitung: Es gibt noch kein SSL-Zertifikat. Entweder
+  SSL aktivieren oder in der .htaccess den HTTPS-Block auskommentieren.
+- Foto-Upload schlägt fehl: "data" und "uploads" beschreibbar machen.
+- Passwort vergessen (Eltern): Das andere Elternteil kann es unter
+  "Verwalten" neu setzen.

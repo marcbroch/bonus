@@ -1,0 +1,47 @@
+name: Auf IONOS veröffentlichen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: PHP-Syntax prüfen
+        run: for f in *.php; do php -l "$f" || exit 1; done
+
+  veroeffentlichen:
+    needs: pruefen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: lftp installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Per SFTP hochladen
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
+        run: |
+          if [ -z "$SFTP_HOST" ] || [ -z "$SFTP_USER" ] || [ -z "$LFTP_PASSWORD" ] || [ -z "$SFTP_REMOTE_DIR" ]; then
+            echo "::error::Es fehlen Zugangsdaten. Bitte SFTP_HOST, SFTP_USER, SFTP_PASSWORD und SFTP_REMOTE_DIR unter Settings > Secrets and variables > Actions anlegen."
+            exit 1
+          fi
+          # Sicherheitsnetz: nie direkt ins Hauptverzeichnis des Webspace hochladen
+          case "$SFTP_REMOTE_DIR" in
+            "/"|"."|"./") echo "::error::SFTP_REMOTE_DIR darf nicht das Hauptverzeichnis sein."; exit 1 ;;
+          esac
+
+          # Kein --delete: Datenbank (data/) und Fotos (uploads/) auf dem Server bleiben unangetastet.
+          EXCLUDES="-X .git/ -X .github/ -X .gitignore -X CLAUDE.md -X ANLEITUNG.txt -X EINRICHTUNG-IONOS.md -X data/*.sqlite*"
+          lftp -c "set sftp:auto-confirm yes; set net:max-retries 3; set net:timeout 30; open -u '$SFTP_USER' --env-password 'sftp://$SFTP_HOST'; mirror --reverse --verbose $EXCLUDES ./ '$SFTP_REMOTE_DIR'"
