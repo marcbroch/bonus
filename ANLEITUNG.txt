@@ -37,8 +37,15 @@ Kind:   "Aufgabe melden" > Aufgabe antippen > Foto machen > Einreichen
 Eltern: "Freigaben" > Foto ansehen > Bestätigen oder Ablehnen
         (bei "Sonstige Aufgabe" tragt ihr die Punkte selbst ein)
 Kind:   "Einlösen" > Belohnung und Anzahl wählen
-Eltern: Einlösung unter "Freigaben" bestätigen – dann z. B. die
-        Bildschirmzeit am iPhone oder der PlayStation freigeben.
+Eltern: Einlösung unter "Freigaben" auf "Ausgezahlt" tippen und
+        eintragen, wie (z. B. bar, aufs Sparbuch, Zeit freigeschaltet).
+Kind:   "Mein Konto" zeigt alle Punkte, Einlösungen und Auszahlungen.
+        Dort kann jedes Kind auch sein Profilbild (Tier) aussuchen.
+Eltern: Unter "Übersicht" auf einen Namen tippen = Konto des Kindes.
+
+Auf der Startseite tippt jede Person auf ihr Profil und gibt dann
+ihr Passwort ein. Die Comic-Bilder zu den Aufgaben sucht die App
+anhand des Namens aus (z. B. "Müll", "Rasen", "Keller").
 
 Unter "Verwalten" könnt ihr Aufgaben, Punkte, Belohnungen und Kurse
 jederzeit ändern – auch pro Kind (z. B. andere Belohnungen für Bent).

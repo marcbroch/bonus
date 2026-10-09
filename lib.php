@@ -96,6 +96,9 @@ function init_schema(PDO $pdo): void {
         reviewed_at TEXT
     );
     ");
+    // Migration für bestehende Datenbanken: Profilbild je Person
+    $cols = array_column($pdo->query('PRAGMA table_info(users)')->fetchAll(), 'name');
+    if (!in_array('avatar', $cols, true)) $pdo->exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 }
 
 function is_installed(): bool {
@@ -202,6 +205,100 @@ function children(bool $onlyActive = true): array {
     return db()->query($sql)->fetchAll();
 }
 
+// ---------- Profilbilder ----------
+const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐵', '🐨', '🐰', '🦄', '🐶', '🐱', '🐻',
+                 '🐧', '🐢', '🦖', '🐙', '🦉', '🐝', '🐞', '🦋', '🐬', '🦔', '🐷', '🐮'];
+
+function avatar_of(array $u): string {
+    $a = (string)($u['avatar'] ?? '');
+    return in_array($a, AVATARS, true) ? $a : AVATARS[((int)$u['id'] - 1) % count(AVATARS)];
+}
+function avatar(array $u, string $size = ''): string {
+    return '<span class="avatar ' . h($size) . ' av' . ((int)$u['id'] % 6) . '" aria-hidden="true">' . avatar_of($u) . '</span>';
+}
+
+// ---------- Comic-Bild zur Aufgabe (nach Stichwort im Namen) ----------
+function task_icon(string $name): string {
+    $n = mb_strtolower($name);
+    $map = [
+        'waesche-hoch'   => fn($n) => str_contains($n, 'wäsche') && (str_contains($n, 'hoch') || str_contains($n, 'aus dem')),
+        'waesche-runter' => ['wäsche'],
+        'muell'          => ['müll', 'tonne', 'altpapier'],
+        'geschirr'       => ['geschirr', 'spülmaschine', 'spüler', 'tisch decken', 'tisch abräumen', 'küche', 'abwasch'],
+        'zimmer'         => ['zimmer', 'bett'],
+        'auto'           => ['auto', 'saug'],
+        'rasen'          => ['rasen', 'mäh'],
+        'hecke'          => ['hecke', 'busch', 'strauch'],
+        'beete'          => ['beet', 'gartenarbeit', 'blume', 'gieß', 'unkraut', 'pflanz'],
+        'garten'         => ['garten', 'laub', 'hof'],
+        'carport'        => ['carport', 'garage', 'fahrrad'],
+        'regal'          => ['regal', 'schrank', 'bücher'],
+        'schuppen'       => ['schuppen', 'gartenhaus'],
+        'treppe'         => ['treppe', 'flur', 'schuhe'],
+        'keller'         => ['keller', 'dachboden', 'karton'],
+    ];
+    foreach ($map as $icon => $test) {
+        $hit = is_callable($test) ? $test($n) : (bool)array_filter($test, fn($w) => str_contains($n, $w));
+        if ($hit) return "assets/tasks/$icon.svg";
+    }
+    return 'assets/tasks/sonstige.svg';
+}
+function task_img(string $name, string $class = 'ticon'): string {
+    return '<img class="' . $class . '" src="' . task_icon($name) . '" alt="" loading="lazy">';
+}
+
+// ---------- Konto: alle Buchungen eines Kindes ----------
+function account_entries(int $userId): array {
+    $pdo = db();
+    $rows = [];
+    $st = $pdo->prepare('SELECT s.*, r.name AS reviewer FROM submissions s LEFT JOIN users r ON r.id = s.reviewed_by WHERE s.user_id=?');
+    $st->execute([$userId]);
+    foreach ($st->fetchAll() as $s) {
+        $rows[] = ['kind' => 'task', 'date' => $s['created_at'], 'id' => (int)$s['id'], 'title' => $s['task_name'],
+                   'delta' => $s['status'] === 'approved' ? (int)$s['points'] : 0, 'row' => $s];
+    }
+    $st = $pdo->prepare('SELECT d.*, r.name AS reviewer FROM redemptions d LEFT JOIN users r ON r.id = d.reviewed_by WHERE d.user_id=?');
+    $st->execute([$userId]);
+    foreach ($st->fetchAll() as $d) {
+        $rows[] = ['kind' => 'reward', 'date' => $d['created_at'], 'id' => (int)$d['id'], 'title' => $d['amount_text'] . ' ' . $d['reward_name'],
+                   'delta' => $d['status'] === 'rejected' ? 0 : -(int)$d['points'], 'row' => $d];
+    }
+    // chronologisch sortieren und den Kontostand nach jeder Buchung mitrechnen
+    usort($rows, fn($a, $b) => [$a['date'], $a['kind'], $a['id']] <=> [$b['date'], $b['kind'], $b['id']]);
+    $sum = 0;
+    foreach ($rows as &$r) { $sum += $r['delta']; $r['balance'] = $sum; }
+    unset($r);
+    return array_reverse($rows);
+}
+
+// Summe der ausgezahlten Belohnungen, z. B. "3 Std. 30 Min." oder "12 €"
+function payout_totals(int $userId): array {
+    $st = db()->prepare("SELECT reward_name, quantity, amount_text FROM redemptions WHERE user_id=? AND status='approved'");
+    $st->execute([$userId]);
+    $tot = [];
+    foreach ($st->fetchAll() as $r) {
+        // amount_text hat die Form "2 × 30 Min."
+        $unit = preg_replace('/^\d+\s*×\s*/u', '', $r['amount_text']);
+        if (preg_match('/^(\d+(?:[.,]\d+)?)\s*(.*)$/u', $unit, $m)) { $num = (float)str_replace(',', '.', $m[1]); $label = trim($m[2]); }
+        else { $num = 1.0; $label = $unit; }
+        $key = $r['reward_name'] . '|' . $label;
+        $tot[$key] ??= ['name' => $r['reward_name'], 'label' => $label, 'sum' => 0.0, 'count' => 0];
+        $tot[$key]['sum'] += $num * (int)$r['quantity'];
+        $tot[$key]['count']++;
+    }
+    foreach ($tot as &$t) $t['text'] = fmt_amount($t['sum'], $t['label']);
+    unset($t);
+    return array_values($tot);
+}
+function fmt_amount(float $n, string $label): string {
+    if (preg_match('/^min/i', $label) && $n >= 60) {
+        $hrs = intdiv((int)$n, 60); $min = (int)$n % 60;
+        return $hrs . ' Std.' . ($min ? " $min Min." : '');
+    }
+    $num = fmod($n, 1.0) == 0.0 ? (string)(int)$n : number_format($n, 2, ',', '.');
+    return trim("$num $label");
+}
+
 // ---------- Foto-Upload ----------
 function save_photo(array $file): ?string {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
@@ -238,7 +335,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=2">
+<link rel="stylesheet" href="assets/style.css?v=3">
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
 <script type="text/javascript">//<![CDATA[
 var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
@@ -267,7 +364,7 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
   <a href="index.php?p=home"<?= $on('home') ?>>Start</a>
   <a href="index.php?p=submit"<?= $on('submit') ?>>Aufgabe melden</a>
   <a href="index.php?p=rewards"<?= $on('rewards') ?>>Einlösen</a>
-  <a href="index.php?p=history"<?= $on('history') ?>>Verlauf</a>
+  <a href="index.php?p=account"<?= $on('account') ?>>Mein Konto</a>
 </nav>
 <?php endif; ?>
 <main>
@@ -278,7 +375,7 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=2"></script>
+<script src="assets/app.js?v=3"></script>
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 2 -->
 <div class="seal">
 <script language="JavaScript" type="text/javascript">
