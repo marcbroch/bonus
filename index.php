@@ -47,6 +47,7 @@ function page_setup(): void {
     page_header('Einrichtung');
     ?>
     <section class="card narrow">
+      <img class="welcome" src="assets/welcome.jpg" alt="Die Familie Brochhaus hilft gemeinsam im Haus und Garten">
       <h1>Willkommen bei <?= APP_NAME ?></h1>
       <p>Lege zuerst deinen Eltern-Zugang an. Die Kinder, Aufgaben und Belohnungen sind schon vorbereitet.</p>
       <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
@@ -84,7 +85,8 @@ function page_login(): void {
     page_header('Anmelden');
     ?>
     <section class="card narrow">
-      <h1>Wer bist du?</h1>
+      <img class="welcome" src="assets/welcome.jpg" alt="Die Familie Brochhaus hilft gemeinsam im Haus und Garten">
+      <h1>Wer bist du? 👋</h1>
       <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
       <form method="post">
         <?= csrf_field() ?>
@@ -97,7 +99,7 @@ function page_login(): void {
           <?php endforeach; ?>
         </div>
         <label>Passwort<input name="password" type="password" required autocomplete="current-password"></label>
-        <button class="btn primary">Anmelden</button>
+        <button class="btn primary block">Los geht’s! 🚀</button>
       </form>
     </section>
     <?php
