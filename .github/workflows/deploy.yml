@@ -10,12 +10,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Vor dem Hochladen testen – mit PHP 7.4 (wie der IONOS-Webspace) und PHP 8.3
+  # Vor dem Hochladen testen – mit PHP 8.4 (wie der IONOS-Webspace) und 7.4 (Rückfall-Version)
   pruefen:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['7.4', '8.3']
+        php: ['7.4', '8.4']
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2

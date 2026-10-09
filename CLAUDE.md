@@ -9,12 +9,15 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
 
 ## Technik
 - Reines PHP ohne Framework und ohne Build-Schritt, Datenbank SQLite.
-- **Der IONOS-Webspace läuft mit PHP 7.4.** Code muss mit PHP 7.4 laufen: keine
-  PHP-8-Funktionen/-Syntax (z. B. `match`, `?->`, Union-Typen, benannte
-  Argumente). `str_contains`/`str_starts_with` gibt es als Ersatz in `lib.php`.
-  PDO liefert unter 7.4 Zahlen als Strings, deshalb immer `(int)` casten.
+- **Der IONOS-Webspace läuft seit Oktober 2026 mit PHP 8.4** (vorher 7.4).
+  Der Code bleibt vorerst trotzdem PHP-7.4-kompatibel, damit Marc bei Problemen
+  bei IONOS auf 7.4 zurückstellen kann: keine PHP-8-Funktionen/-Syntax (z. B.
+  `match`, `?->`, Union-Typen, benannte Argumente). `str_contains`/
+  `str_starts_with` gibt es als Ersatz in `lib.php`. PDO liefert unter 7.4
+  Zahlen als Strings, deshalb immer `(int)` casten. Nullbare Parameter immer
+  mit `?Typ` schreiben (PHP 8.4 warnt sonst).
 - `.github/smoke-test.sh` richtet die App ein, meldet sich als Eltern und Kind an
-  und ruft alle Seiten auf. Die Workflows führen es mit PHP 7.4 und 8.3 aus;
+  und ruft alle Seiten auf. Die Workflows führen es mit PHP 8.4 und 7.4 aus;
   ohne grünen Test wird nicht hochgeladen.
 - Fehler landen in `data/error.log` (von außen gesperrt). Der Upload-Workflow
   prüft danach die Live-Seite und zeigt neue Einträge aus diesem Protokoll.
