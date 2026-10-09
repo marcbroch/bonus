@@ -304,7 +304,8 @@ function page_admin_settings(): void {
 function settings_people(array $me): void {
     $people = db()->query("SELECT * FROM users ORDER BY role='child', sort, id")->fetchAll();
     ?>
-    <p class="muted">Passwort leer lassen, um es nicht zu ändern. „Darf sich anmelden“ ausschalten für Kinder ohne eigenes Gerät (z. B. Heidi) – für sie tragt ihr Aufgaben unter „Eintragen“ ein.</p>
+    <p class="muted">Hier legt ihr Passwörter für andere fest, z. B. wenn ein Kind seins vergessen hat. Sein eigenes Passwort ändert jeder selbst über „🔑 Passwort“ oben.
+      Passwort leer lassen, um es nicht zu ändern. „Darf sich anmelden“ ausschalten für Kinder ohne eigenes Gerät (z. B. Heidi) – für sie tragt ihr Aufgaben unter „Eintragen“ ein.</p>
     <?php foreach ($people as $u): ?>
       <form method="post" class="card setting">
         <?= csrf_field() ?><input type="hidden" name="s" value="people"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>">

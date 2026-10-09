@@ -479,20 +479,14 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=4">
-<!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
-<script type="text/javascript">//<![CDATA[
-var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
-document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/trustlogo.js' type='text/javascript'%3E%3C/script%3E"));
-//]]>
-</script>
+<link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
     <span class="logo"><span class="rainbow"><?= rainbow('Brochhaus') ?></span><span class="sub">Bonus</span></span></a>
   <?php if ($user): ?>
-    <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=logout">Abmelden</a></span>
+    <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
 </header>
 <?php $cur = (string)($_GET['p'] ?? ''); $on = fn(string $p) => $cur === $p ? ' class="on"' : ''; ?>
@@ -520,13 +514,6 @@ function page_footer(): void {
     ?>
 </main>
 <script src="assets/app.js?v=4"></script>
-<!-- SSL-Siegel (Sectigo/Instant SSL), Teil 2 -->
-<div class="seal">
-<script language="JavaScript" type="text/javascript">
-TrustLogo("https://www.trustlogo.com/images/install/instantssl_trust_seal_md_159x42.png", "SC7", "none");
-</script>
-<a href="https://www.instantssl.com/ssl.html" id="comodoTL">Instant SSL</a>
-</div>
 </body>
 </html>
 <?php
