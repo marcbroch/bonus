@@ -8,7 +8,16 @@ Marc ist Marketing Manager, kein Developer. Erkläre Änderungen kurz und in
 einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
 
 ## Technik
-- Reines PHP 8.1+ ohne Framework und ohne Build-Schritt, Datenbank SQLite.
+- Reines PHP ohne Framework und ohne Build-Schritt, Datenbank SQLite.
+- **Der IONOS-Webspace läuft mit PHP 7.4.** Code muss mit PHP 7.4 laufen: keine
+  PHP-8-Funktionen/-Syntax (z. B. `match`, `?->`, Union-Typen, benannte
+  Argumente). `str_contains`/`str_starts_with` gibt es als Ersatz in `lib.php`.
+  PDO liefert unter 7.4 Zahlen als Strings, deshalb immer `(int)` casten.
+- `.github/smoke-test.sh` richtet die App ein, meldet sich als Eltern und Kind an
+  und ruft alle Seiten auf. Die Workflows führen es mit PHP 7.4 und 8.3 aus;
+  ohne grünen Test wird nicht hochgeladen.
+- Fehler landen in `data/error.log` (von außen gesperrt). Der Upload-Workflow
+  prüft danach die Live-Seite und zeigt neue Einträge aus diesem Protokoll.
 - `index.php` ist der Einstieg (Routing über `?p=...`). `lib.php` enthält
   gemeinsame Funktionen, Datenbankschema und Layout, `pages_child.php` die
   Kinder-Seiten, `pages_admin.php` die Eltern-Seiten, `photo.php` liefert
@@ -29,4 +38,4 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
   gelöscht. Das muss so bleiben.
 - Lokal testen: `php -S 127.0.0.1:8000` im Projektordner, dann
   `http://127.0.0.1:8000/index.php` öffnen. Vor dem Commit `php -l` auf alle
-  geänderten PHP-Dateien ausführen.
+  geänderten PHP-Dateien und `.github/smoke-test.sh` ausführen.

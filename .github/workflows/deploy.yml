@@ -10,12 +10,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Vor dem Hochladen testen – mit PHP 7.4 (wie der IONOS-Webspace) und PHP 8.3
   pruefen:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.3']
     steps:
       - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, mbstring
+          coverage: none
       - name: PHP-Syntax prüfen
         run: for f in *.php; do php -l "$f" || exit 1; done
+      - name: App kurz durchtesten
+        run: .github/smoke-test.sh
 
   veroeffentlichen:
     needs: pruefen
@@ -53,13 +64,20 @@ jobs:
           LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
         run: |
+          START=$(TZ=Europe/Berlin date -d '-1 minute' '+%Y-%m-%d %H:%M:%S')
           sleep 3
           URL="https://brochhaus.name/bonus/index.php?p=login"
           code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL" || echo 000)
           echo "Anmeldeseite: HTTP $code"
-          # Letzte Einträge aus dem Fehlerprotokoll der App anzeigen (falls vorhanden)
-          echo "--- data/error.log (letzte Einträge) ---"
-          lftp -c "set sftp:auto-confirm yes; set net:max-retries 2; open -u '$SFTP_USER' --env-password 'sftp://$SFTP_HOST'; cat '$SFTP_REMOTE_DIR/data/error.log'" 2>/dev/null | tail -n 15 || true
+          # Neue Einträge im Fehlerprotokoll der App seit diesem Upload
+          lftp -c "set sftp:auto-confirm yes; set net:max-retries 2; open -u '$SFTP_USER' --env-password 'sftp://$SFTP_HOST'; cat '$SFTP_REMOTE_DIR/data/error.log'" 2>/dev/null \
+            | awk -v s="$START" 'substr($0, 1, 19) >= s' > neue-fehler.txt || true
+          if [ -s neue-fehler.txt ]; then
+            echo "--- Neue Einträge in data/error.log ---"; tail -n 20 neue-fehler.txt
+            echo "::error::Die App hat nach dem Upload Fehler protokolliert."
+            exit 1
+          fi
+          echo "Keine neuen Fehler im Protokoll."
           if [ "$code" != "200" ]; then
             echo "::error::Die Live-Seite antwortet mit HTTP $code statt 200."
             exit 1

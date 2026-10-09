@@ -1,0 +1,25 @@
+name: Testen
+
+# Läuft bei jedem Push auf einen Arbeitszweig (nicht main) und bei Pull Requests
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+jobs:
+  testen:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, mbstring
+          coverage: none
+      - name: PHP-Syntax prüfen
+        run: for f in *.php; do php -l "$f" || exit 1; done
+      - name: App kurz durchtesten
+        run: .github/smoke-test.sh
