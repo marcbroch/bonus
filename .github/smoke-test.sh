@@ -34,6 +34,17 @@ curl -s -c "$K" -o "$TMP/page" "$BASE?p=login"
 post "$K" "p=login" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "uid=1" -d "password=bent123"
 for pg in "p=home" "p=home&w=-2" "p=submit" "p=submit&t=1" "p=rewards" "p=account"; do get "$K" "$pg"; done
 grep -q "Hallo Bent" <(curl -s -b "$K" "$BASE?p=home") || { echo "FEHLER  Kind-Anmeldung hat nicht geklappt"; FAIL=1; }
+get "$P" "p=password"
+
+# Passwort ändern: falsches altes Passwort wird abgelehnt, richtiges klappt, neues gilt beim Anmelden
+get "$K" "p=password"
+post "$K" "p=password" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "old=falsch" -d "new=neu4567" -d "new2=neu4567"
+grep -q "stimmt nicht" "$TMP/page" || { echo "FEHLER  falsches altes Passwort wurde nicht abgelehnt"; FAIL=1; }
+post "$K" "p=password" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "old=bent123" -d "new=neu4567" -d "new2=neu4567"
+K2="$TMP/kid2"
+curl -s -c "$K2" -o "$TMP/page" "$BASE?p=login"
+post "$K2" "p=login" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "uid=1" -d "password=neu4567"
+if grep -q "Hallo Bent" <(curl -s -b "$K2" "$BASE?p=home"); then echo "ok      Passwort ändern"; else echo "FEHLER  Anmeldung mit neuem Passwort klappt nicht"; FAIL=1; fi
 
 if [ -s data/error.log ]; then echo "FEHLER  data/error.log:"; cat data/error.log; FAIL=1; fi
 if grep -qE "PHP (Fatal|Warning|Notice|Deprecated|Parse)" "$TMP/server.log"; then echo "FEHLER  Server-Log:"; grep -E "PHP " "$TMP/server.log" | head; FAIL=1; fi

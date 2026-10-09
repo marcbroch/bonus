@@ -50,6 +50,11 @@ Nach dem Anmelden zeigt die Wochenwertung, wer von Montag bis
 Sonntag wie viele Punkte gesammelt hat (mit ‹ zu früheren Wochen).
 Die Punkte verfallen nie, sie bleiben auf dem Konto.
 
+Passwort ändern: Jeder kann sein eigenes Passwort oben über
+"🔑 Passwort" ändern (Kinder auch unter "Mein Konto"). Dafür braucht
+man das bisherige Passwort. Wer es vergessen hat: Die Eltern legen
+unter "Verwalten" > "Personen" ein neues fest.
+
 Jede Aufgabe braucht ein Foto: "Foto machen" öffnet am iPhone
 direkt die Kamera, "Aus Fotos wählen" die Fotomediathek.
 

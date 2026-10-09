@@ -31,6 +31,7 @@ if (!is_installed()) { page_setup(); exit; }
 switch ($p) {
     case 'login':          page_login(); break;
     case 'logout':         session_destroy(); redirect('login');
+    case 'password':       page_password(); break;
     case 'home':           page_home(); break;
     case 'submit':         page_submit(); break;
     case 'rewards':        page_rewards(); break;
@@ -125,6 +126,52 @@ function page_login(): void {
           <button class="btn primary block">Los geht’s! 🚀</button>
         </div>
       </form>
+    </section>
+    <?php
+    page_footer();
+}
+
+// Eigenes Passwort ändern (für Kinder und Eltern)
+function page_password(): void {
+    $u = require_login();
+    $min = $u['role'] === 'parent' ? 6 : 4;
+    $error = '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        check_csrf();
+        $old = (string)($_POST['old'] ?? '');
+        $new = (string)($_POST['new'] ?? '');
+        $new2 = (string)($_POST['new2'] ?? '');
+        usleep(300000); // kleine Bremse gegen Durchprobieren
+        if (!$u['password_hash'] || !password_verify($old, $u['password_hash'])) {
+            $error = 'Dein bisheriges Passwort stimmt nicht.';
+        } elseif (mb_strlen($new) < $min) {
+            $error = "Das neue Passwort braucht mindestens $min Zeichen.";
+        } elseif ($new !== $new2) {
+            $error = 'Die beiden neuen Passwörter sind nicht gleich.';
+        } elseif ($new === $old) {
+            $error = 'Das neue Passwort ist dasselbe wie das alte.';
+        } else {
+            db()->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($new, PASSWORD_DEFAULT), $u['id']]);
+            session_regenerate_id(true);
+            flash('Dein Passwort ist geändert. Merk es dir gut! 🔑');
+            redirect($u['role'] === 'parent' ? 'admin' : 'account');
+        }
+    }
+    page_header('Passwort ändern', $u);
+    ?>
+    <section class="card narrow">
+      <h1>🔑 Passwort ändern</h1>
+      <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
+      <form method="post">
+        <?= csrf_field() ?>
+        <input type="text" name="username" value="<?= h($u['name']) ?>" autocomplete="username" hidden>
+        <label>Bisheriges Passwort<input name="old" type="password" required autocomplete="current-password"></label>
+        <label>Neues Passwort <span class="muted">(mind. <?= $min ?> Zeichen)</span>
+          <input name="new" type="password" required minlength="<?= $min ?>" autocomplete="new-password"></label>
+        <label>Neues Passwort wiederholen<input name="new2" type="password" required minlength="<?= $min ?>" autocomplete="new-password"></label>
+        <button class="btn primary block">Passwort speichern</button>
+      </form>
+      <p class="muted">Bisheriges Passwort vergessen? Dann können Mama oder Papa unter „Verwalten → Personen“ ein neues festlegen.</p>
     </section>
     <?php
     page_footer();

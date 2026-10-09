@@ -479,7 +479,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=4">
+<link rel="stylesheet" href="assets/style.css?v=5">
 <!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
 <script type="text/javascript">//<![CDATA[
 var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
@@ -492,7 +492,7 @@ document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/tru
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
     <span class="logo"><span class="rainbow"><?= rainbow('Brochhaus') ?></span><span class="sub">Bonus</span></span></a>
   <?php if ($user): ?>
-    <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=logout">Abmelden</a></span>
+    <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
 </header>
 <?php $cur = (string)($_GET['p'] ?? ''); $on = fn(string $p) => $cur === $p ? ' class="on"' : ''; ?>

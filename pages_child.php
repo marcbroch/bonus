@@ -263,6 +263,7 @@ function page_account(): void {
       </ul>
     </section>
 
+    <?php if ($own): ?><a class="btn block" href="index.php?p=password">🔑 Mein Passwort ändern</a><?php endif; ?>
     <details class="card avatars">
       <summary><h2><?= avatar($kid) ?> <?= $own ? 'Profilbild ändern' : 'Profilbild für ' . h($kid['name']) ?></h2></summary>
       <form method="post" class="avatar-pick">
