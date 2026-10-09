@@ -479,13 +479,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=5">
-<!-- SSL-Siegel (Sectigo/Instant SSL), Teil 1 -->
-<script type="text/javascript">//<![CDATA[
-var tlJsHost = ((window.location.protocol == "https:") ? "https://secure.trust-provider.com/" : "http://www.trustlogo.com/");
-document.write(unescape("%3Cscript src='" + tlJsHost + "trustlogo/javascript/trustlogo.js' type='text/javascript'%3E%3C/script%3E"));
-//]]>
-</script>
+<link rel="stylesheet" href="assets/style.css?v=6">
 </head>
 <body>
 <header class="top">
@@ -520,13 +514,6 @@ function page_footer(): void {
     ?>
 </main>
 <script src="assets/app.js?v=4"></script>
-<!-- SSL-Siegel (Sectigo/Instant SSL), Teil 2 -->
-<div class="seal">
-<script language="JavaScript" type="text/javascript">
-TrustLogo("https://www.trustlogo.com/images/install/instantssl_trust_seal_md_159x42.png", "SC7", "none");
-</script>
-<a href="https://www.instantssl.com/ssl.html" id="comodoTL">Instant SSL</a>
-</div>
 </body>
 </html>
 <?php

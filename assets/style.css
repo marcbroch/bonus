@@ -242,8 +242,6 @@ label.inline { display: flex; align-items: center; gap: .5rem; } label.inline in
   .tabs { grid-template-columns: 1fr 1fr; position: static; } .tabs a { font-size: .95rem; padding: .5rem .4rem; }
 }
 
-/* SSL-Siegel unten auf der Wiese */
-.seal { position: relative; z-index: 1; text-align: center; margin: 24px 0 0; }
 
 /* ---------- kleine Animationen ---------- */
 @keyframes spin { to { transform: rotate(360deg); } }
