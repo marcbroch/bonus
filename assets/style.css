@@ -1,7 +1,7 @@
 /* Brochhaus-Bonus – Comic-Look: Himmel, Wolken, Wiese, Regenbogen-Schrift */
 @font-face {
   font-family: "Fredoka"; src: url("fredoka.woff2") format("woff2");
-  font-weight: 300 700; font-display: swap;
+  font-weight: 300 700; font-stretch: 75% 125%; font-display: swap;
 }
 :root {
   color-scheme: light;
@@ -71,19 +71,9 @@ b, strong { font-weight: 600; }
 .brand { display: flex; align-items: center; gap: .55rem; text-decoration: none; position: relative; }
 .brand img { width: 46px; height: 46px; border-radius: 14px; border: 3px solid #fff; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
 .logo { display: flex; flex-direction: column; line-height: .95; }
-.rainbow { font-size: 2.2rem; font-weight: 700; letter-spacing: .03em; white-space: nowrap; text-transform: uppercase; }
-.rainbow span {
-  display: inline-block; -webkit-text-stroke: 5px #fff; paint-order: stroke fill;
-  text-shadow: 0 3px 0 rgba(43, 42, 61, .25);
-}
-.rainbow span:nth-child(7n+1) { color: #ff4f6d; transform: rotate(-6deg); }
-.rainbow span:nth-child(7n+2) { color: #ff8a1f; transform: translateY(-2px) rotate(3deg); }
-.rainbow span:nth-child(7n+3) { color: #ffc400; transform: rotate(-3deg); }
-.rainbow span:nth-child(7n+4) { color: #3cbf5b; transform: translateY(-3px) rotate(4deg); }
-.rainbow span:nth-child(7n+5) { color: #2f9be0; transform: rotate(-4deg); }
-.rainbow span:nth-child(7n+6) { color: #9b5de5; transform: translateY(-1px) rotate(5deg); }
-.rainbow span:nth-child(7n+7) { color: #ff5fa2; transform: rotate(-2deg); }
-.logo .sub { font-size: .95rem; font-weight: 600; color: #fff; letter-spacing: .3em; text-transform: uppercase;
+.wordmark { display: block; width: 250px; height: auto; overflow: visible; margin: -6px 0 -4px -4px;
+  filter: drop-shadow(0 3px 2px rgba(26, 60, 110, .25)); }
+.logo .sub { margin-top: -2px; padding-left: 2.2rem; font-size: .95rem; font-weight: 600; color: #fff; letter-spacing: .3em; text-transform: uppercase;
   text-shadow: 0 2px 0 rgba(26, 118, 181, .55); margin-top: .1rem; padding-left: .1rem; }
 .who { position: relative; z-index: 1; font-size: .95rem; background: rgba(255,255,255,.9); padding: .3rem .8rem; border-radius: 99px;
   box-shadow: 0 3px 0 rgba(0,0,0,.08); font-weight: 500; }
@@ -238,7 +228,7 @@ label.inline { display: flex; align-items: center; gap: .5rem; } label.inline in
 .tt-row .sm { width: 100% !important; }
 @media (max-width: 480px) {
   .tt-head, .tt-row { grid-template-columns: 3.2rem 1fr 4.2rem 1.8rem 2.4rem; } .tt-row input { padding: .55rem .45rem; }
-  .rainbow { font-size: 1.75rem; } .brand img { width: 42px; height: 42px; }
+  .wordmark { width: 232px; } .brand img { width: 42px; height: 42px; }
   .tabs { grid-template-columns: 1fr 1fr; position: static; } .tabs a { font-size: .95rem; padding: .5rem .4rem; }
 }
 
