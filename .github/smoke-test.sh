@@ -69,6 +69,10 @@ curl -s -c "$K2" -o "$TMP/page" "$BASE?p=login"
 post "$K2" "p=login" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "uid=1" -d "password=neu4567"
 if grep -q "Hallo Bent" <(curl -s -b "$K2" "$BASE?p=home"); then echo "ok      Passwort ändern"; else echo "FEHLER  Anmeldung mit neuem Passwort klappt nicht"; FAIL=1; fi
 
+# Neue Aufgaben vom 11.10.2026 sind da (ohne Geld)
+get "$P" "p=admin_settings&s=tasks"
+grep -q 'value="Holz reinholen"' "$TMP/page" && grep -q 'value="Kaffee machen"' "$TMP/page" && echo "ok      Neue Aufgaben" || { echo "FEHLER  Neue Aufgaben fehlen"; FAIL=1; }
+
 # Gemeinsam erledigte Aufgabe: Bent meldet "Hecke schneiden" (50 P.) mit Mieke, Eltern bestätigen, jeder bekommt 25
 get "$P" "p=admin_settings&s=people"
 post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=people" -d "id=2" -d "name=Mieke" \
@@ -82,11 +86,11 @@ post "$P" "p=admin" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "id=$SID" -d 
 get "$P" "p=account&u=2"
 if grep -q "+25" "$TMP/page" && grep -q "mit Bent" "$TMP/page"; then echo "ok      Aufgabe teilen"; else echo "FEHLER  Punkte wurden nicht geteilt"; FAIL=1; fi
 
-# Punkte, die nicht zu Geld werden dürfen: "Tisch decken" (300 P., ohne Geld) zählt nicht fürs Taschengeld
+# Punkte, die nicht zu Geld werden dürfen: "Holz stapeln" (300 P., ohne Geld) zählt nicht fürs Taschengeld
 get "$P" "p=admin_settings&s=tasks"
-post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=tasks" -d "name=Tisch decken" -d "points=300" -d "action=add_task"
+post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=tasks" -d "name=Holz stapeln" -d "points=300" -d "action=add_task"
 get "$P" "p=admin_enter"
-post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_ids[]=1" -F "task_id=17" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
+post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_ids[]=1" -F "task_id=21" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
 get "$K2" "p=rewards"
 grep -q "davon <b>25</b> für Geld nutzbar" "$TMP/page" || { echo "FEHLER  Geld-Punkte werden falsch angezeigt"; FAIL=1; }
 post "$K2" "p=rewards" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "reward_id=3" -d "qty=1"

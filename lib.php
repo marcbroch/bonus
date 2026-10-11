@@ -145,6 +145,29 @@ function init_schema(PDO $pdo): void {
     if ($add('redemptions', 'is_money', 'INTEGER NOT NULL DEFAULT 0')) {
         $pdo->exec('UPDATE redemptions SET is_money=1 WHERE reward_id IN (SELECT id FROM rewards WHERE is_money=1)');
     }
+    // Einmalig neue Aufgaben in die bestehende Datenbank eintragen (Zähler: PRAGMA user_version).
+    // Bei einer neuen Installation legt seed_defaults() sie an.
+    $version = (int)$pdo->query('PRAGMA user_version')->fetchColumn();
+    if ($version < 1) {
+        if ((int)$pdo->query('SELECT COUNT(*) FROM tasks')->fetchColumn() > 0) add_tasks($pdo, NEW_TASKS_1);
+        $pdo->exec('PRAGMA user_version = 1');
+    }
+}
+
+// Aufgaben vom 11.10.2026: [Name, Stichwort, Bild, Punkte, darf zu Geld werden]
+const NEW_TASKS_1 = [
+    ['Kaffee machen', 'Kaffee', 'geschirr', 10, 0],
+    ['Fahrräder reinstellen', 'Fahrräder', 'carport', 10, 0],
+    ['Holz reinholen', 'Holz', 'schuppen', 15, 0],
+    ['Tisch decken', 'Tisch decken', 'geschirr', 10, 0],
+];
+function add_tasks(PDO $pdo, array $tasks): void {
+    $exists = $pdo->prepare('SELECT COUNT(*) FROM tasks WHERE name=?');
+    $ins = $pdo->prepare('INSERT INTO tasks (name, keyword, icon, points, money_ok, sort) VALUES (?,?,?,?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM tasks))');
+    foreach ($tasks as $t) {
+        $exists->execute([$t[0]]);
+        if ((int)$exists->fetchColumn() === 0) $ins->execute($t);
+    }
 }
 
 // Fehler in data/error.log schreiben (Ordner ist von außen gesperrt)
@@ -174,6 +197,7 @@ function seed_defaults(): void {
             $icon = guess_icon($t[0]);
             $st->execute([$t[0], guess_keyword($t[0], $icon), $icon, $t[1], $i]);
         }
+        add_tasks($pdo, NEW_TASKS_1);
     }
     if ((int)$pdo->query('SELECT COUNT(*) FROM rewards')->fetchColumn() === 0) {
         $st = $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, sort, is_money) VALUES (?,?,?,?,?)');
@@ -339,16 +363,16 @@ function guess_icon(string $name): string {
     $words = [
         'waesche-runter' => ['wäsche'],
         'muell'          => ['müll', 'tonne', 'altpapier'],
-        'geschirr'       => ['geschirr', 'spülmaschine', 'spüler', 'tisch decken', 'tisch abräumen', 'küche', 'abwasch'],
+        'geschirr'       => ['geschirr', 'spülmaschine', 'spüler', 'tisch decken', 'tischdecken', 'tisch abräumen', 'kaffee', 'küche', 'abwasch'],
         'zimmer'         => ['zimmer', 'bett'],
         'auto'           => ['auto', 'saug'],
         'rasen'          => ['rasen', 'mäh'],
         'hecke'          => ['hecke', 'busch', 'strauch'],
         'beete'          => ['beet', 'gartenarbeit', 'blume', 'gieß', 'unkraut', 'pflanz'],
         'garten'         => ['garten', 'laub', 'hof'],
-        'carport'        => ['carport', 'garage', 'fahrrad'],
+        'carport'        => ['carport', 'garage', 'fahrrad', 'fahrräder'],
         'regal'          => ['regal', 'schrank', 'bücher'],
-        'schuppen'       => ['schuppen', 'gartenhaus'],
+        'schuppen'       => ['schuppen', 'gartenhaus', 'holz'],
         'treppe'         => ['treppe', 'flur', 'schuhe'],
         'keller'         => ['keller', 'dachboden', 'karton'],
     ];
