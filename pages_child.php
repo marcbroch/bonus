@@ -11,6 +11,7 @@ function child_user(): array {
 function page_home(): void {
     $u = child_user();
     $bal = balance((int)$u['id']);
+    $money = money_balance((int)$u['id']);
     $st = db()->prepare("SELECT * FROM submissions WHERE user_id=? ORDER BY id DESC LIMIT 5");
     $st->execute([$u['id']]);
     $recent = $st->fetchAll();
@@ -23,9 +24,10 @@ function page_home(): void {
       <div class="label">Hallo <?= h($u['name']) ?>, du hast</div>
       <div class="big"><?= $bal ?> <small>Punkte</small></div>
       <div class="keep">auf deinem Konto – sie verfallen nie</div>
+      <?php if ($money < $bal): ?><div class="keep">davon <b><?= $money ?></b> für Geld nutzbar 💶</div><?php endif; ?>
       <?php if ($rw && $bal >= min(array_map(fn($r) => (int)$r['cost'], $rw))): ?>
         <div class="worth">
-          <?php foreach ($rw as $r): $n = intdiv(max($bal, 0), (int)$r['cost']); if ($n < 1) continue; ?>
+          <?php foreach ($rw as $r): $n = intdiv(max($r['is_money'] ? $money : $bal, 0), (int)$r['cost']); if ($n < 1) continue; ?>
             <span>reicht für <?= $n ?> × <?= h($r['unit_amount']) ?> <?= h($r['name']) ?></span>
           <?php endforeach; ?>
         </div>
@@ -38,7 +40,7 @@ function page_home(): void {
       <div class="quick">
         <?php foreach ($tasks as $t): ?>
           <a class="qtask" href="index.php?p=submit&t=<?= (int)$t['id'] ?>"><?= icon_img($t['icon'] ?? guess_icon($t['name']), 'ticon big') ?>
-            <b><?= h(($t['keyword'] ?? '') ?: $t['name']) ?></b><span><?= $t['points'] === null ? 'frei' : (int)$t['points'] . ' P.' ?></span></a>
+            <b><?= h(($t['keyword'] ?? '') ?: $t['name']) ?></b><span><?= $t['points'] === null ? 'frei' : (int)$t['points'] . ' P.' ?><?= $t['money_ok'] ? '' : ' · kein Geld' ?></span></a>
         <?php endforeach; ?>
       </div>
     </section>
@@ -49,7 +51,7 @@ function page_home(): void {
         <?php foreach ($recent as $s): ?>
           <li>
             <?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?>
-            <div><b><?= h($s['task_name']) ?></b><br><span class="muted"><?= fmt_date($s['created_at']) ?></span>
+            <div><b><?= h($s['task_name']) ?></b><br><span class="muted"><?= fmt_date($s['created_at']) ?><?= group_line($s, (int)$u['id']) ?></span>
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
           </li>
@@ -64,6 +66,8 @@ function page_home(): void {
 function page_submit(): void {
     $u = child_user();
     $tasks = db()->query('SELECT * FROM tasks WHERE active=1 ORDER BY sort, id')->fetchAll();
+    $others = array_values(array_filter(children(), fn($k) => (int)$k['id'] !== (int)$u['id']));
+    $partners = array_values(array_intersect(array_map(fn($k) => (int)$k['id'], $others), array_map('intval', (array)($_POST['partners'] ?? []))));
     $error = '';
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         check_csrf();
@@ -76,9 +80,11 @@ function page_submit(): void {
             if ($task['points'] === null && $note === '') throw new RuntimeException('Bitte kurz beschreiben, was du gemacht hast.');
             $photo = photo_from_request();
             if (!$photo) throw new RuntimeException('Bitte ein Foto als Nachweis machen oder auswählen.');
-            $ins = db()->prepare('INSERT INTO submissions (user_id, task_id, task_name, note, photo, points, created_at) VALUES (?,?,?,?,?,?,?)');
-            $ins->execute([$u['id'], $task['id'], $task['name'], $note ?: null, $photo, (int)($task['points'] ?? 0), now()]);
-            flash('Super! Deine Aufgabe wartet jetzt auf die Freigabe.');
+            db()->beginTransaction();
+            create_submissions(array_merge([(int)$u['id']], $partners), $task, $note ?: null, $photo, (int)($task['points'] ?? 0));
+            db()->commit();
+            flash($partners ? 'Super! Eure Aufgabe wartet jetzt auf die Freigabe – die Punkte werden geteilt.'
+                            : 'Super! Deine Aufgabe wartet jetzt auf die Freigabe.');
             redirect('home');
         } catch (RuntimeException $e) {
             $error = $e->getMessage();
@@ -99,10 +105,19 @@ function page_submit(): void {
               <?= icon_img($t['icon'] ?? guess_icon($t['name']), 'ticon big') ?>
               <span class="tkey"><?= h(($t['keyword'] ?? '') ?: $t['name']) ?></span>
               <span class="tname"><?= h($t['name']) ?></span>
-              <span class="tpts"><?= $t['points'] === null ? 'Eltern entscheiden' : (int)$t['points'] . ' P.' ?></span>
+              <span class="tpts"><?= $t['points'] === null ? 'Eltern entscheiden' : (int)$t['points'] . ' P.' ?><?= $t['money_ok'] ? '' : ' · kein Geld' ?></span>
             </label>
           <?php endforeach; ?>
         </div>
+        <?php if ($others): ?>
+          <h2>👫 Zusammen gemacht?</h2>
+          <p class="muted">Tippe an, wer mitgeholfen hat. Die Punkte werden dann gleichmäßig geteilt.</p>
+          <div class="namepick">
+            <?php foreach ($others as $k): ?>
+              <label class="chip"><input type="checkbox" name="partners[]" value="<?= (int)$k['id'] ?>" <?= in_array((int)$k['id'], $partners, true) ? 'checked' : '' ?>><span><?= h($k['name']) ?></span></label>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
         <h2 id="foto">Foto als Nachweis</h2>
         <?php photo_picker(); ?>
         <label>Kurze Notiz <span class="muted js-note-hint">(optional)</span>
@@ -126,33 +141,39 @@ function page_rewards(): void {
         foreach ($rewards as $x) if ((int)$x['id'] === $rid) $r = $x;
         if (!$r) { flash('Diese Belohnung gibt es nicht.', 'err'); redirect('rewards'); }
         $cost = (int)$r['cost'] * $qty;
+        $isMoney = (int)$r['is_money'] === 1;
         db()->beginTransaction();
-        if (balance($uid) < $cost) {
+        if (($isMoney ? money_balance($uid) : balance($uid)) < $cost) {
             db()->rollBack();
-            flash('Dafür reichen deine Punkte noch nicht.', 'err');
+            flash($isMoney && balance($uid) >= $cost
+                ? 'Nicht alle deine Punkte dürfen zu Geld werden – dafür reicht es noch nicht.'
+                : 'Dafür reichen deine Punkte noch nicht.', 'err');
             redirect('rewards');
         }
         $amount = $qty . ' × ' . $r['unit_amount'];
-        $ins = db()->prepare('INSERT INTO redemptions (user_id, reward_id, reward_name, quantity, amount_text, points, created_at) VALUES (?,?,?,?,?,?,?)');
-        $ins->execute([$uid, $r['id'], $r['name'], $qty, $amount, $cost, now()]);
+        $ins = db()->prepare('INSERT INTO redemptions (user_id, reward_id, reward_name, quantity, amount_text, points, is_money, created_at) VALUES (?,?,?,?,?,?,?,?)');
+        $ins->execute([$uid, $r['id'], $r['name'], $qty, $amount, $cost, $isMoney ? 1 : 0, now()]);
         db()->commit();
         flash('Eingelöst! Mama oder Papa bestätigen das gleich.');
         redirect('rewards');
     }
     $bal = balance($uid);
+    $money = money_balance($uid);
     $st = db()->prepare('SELECT * FROM redemptions WHERE user_id=? ORDER BY id DESC LIMIT 10');
     $st->execute([$uid]);
     $done = $st->fetchAll();
     page_header('Einlösen', $u);
     ?>
-    <section class="hero small"><div class="label">Dein Punktestand</div><div class="big"><?= $bal ?> <small>Punkte</small></div></section>
+    <section class="hero small"><div class="label">Dein Punktestand</div><div class="big"><?= $bal ?> <small>Punkte</small></div>
+      <?php if ($money < $bal): ?><div class="keep">davon <b><?= $money ?></b> für Geld nutzbar 💶</div><?php endif; ?></section>
     <?php if (!$rewards): ?><p class="card muted">Für dich sind gerade keine Belohnungen freigeschaltet.</p><?php endif; ?>
-    <?php foreach ($rewards as $r): $max = intdiv(max($bal, 0), (int)$r['cost']); ?>
+    <?php foreach ($rewards as $r): $avail = max($r['is_money'] ? $money : $bal, 0); $max = intdiv($avail, (int)$r['cost']); ?>
       <section class="card reward">
         <div class="rhead"><h2><?= h($r['name']) ?></h2><span class="rate"><?= (int)$r['cost'] ?> P. = <?= h($r['unit_amount']) ?></span></div>
         <?php if ($max < 1): ?>
-          <p class="muted">Noch <?= (int)$r['cost'] - max($bal, 0) ?> Punkte bis zur ersten Einheit.</p>
-          <div class="progress"><span style="width:<?= min(100, (int)round(max($bal, 0) / (int)$r['cost'] * 100)) ?>%"></span></div>
+          <p class="muted">Noch <?= (int)$r['cost'] - $avail ?> <?= $r['is_money'] && $money < $bal ? 'Geld-Punkte' : 'Punkte' ?> bis zur ersten Einheit.</p>
+          <?php if ($r['is_money'] && $money < $bal): ?><p class="muted">Für Geld zählen nur Punkte aus Aufgaben, die zu Geld werden dürfen.</p><?php endif; ?>
+          <div class="progress"><span style="width:<?= min(100, (int)round($avail / (int)$r['cost'] * 100)) ?>%"></span></div>
         <?php else: ?>
           <form method="post" class="redeem">
             <?= csrf_field() ?>
@@ -215,6 +236,7 @@ function page_account(): void {
       <?= avatar($kid, 'big') ?>
       <div class="label"><?= $own ? 'Dein Konto' : 'Konto von ' . h($kid['name']) ?></div>
       <div class="big"><?= balance($uid) ?> <small>Punkte</small></div>
+      <?php $money = money_balance($uid); if ($money < balance($uid)): ?><div class="keep">davon <b><?= $money ?></b> für Geld nutzbar 💶</div><?php endif; ?>
     </section>
 
     <div class="stats">
@@ -250,7 +272,7 @@ function page_account(): void {
               <span class="gift" aria-hidden="true">🎁</span>
             <?php endif; ?>
             <div class="grow"><b><?= h($e['title']) ?></b><br>
-              <span class="muted"><?= fmt_date($e['date']) ?><br><?= ledger_status($e) ?></span>
+              <span class="muted"><?= fmt_date($e['date']) ?><?= $e['kind'] === 'task' ? group_line($r, $uid) : '' ?><br><?= ledger_status($e) ?></span>
               <?php if ($r['comment']): ?><br><span class="comment">„<?= h($r['comment']) ?>“</span><?php endif; ?></div>
             <div class="amt">
               <?php if ($e['kind'] === 'task' && $r['status'] === 'pending'): ?>

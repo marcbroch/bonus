@@ -40,7 +40,7 @@ get "$P" "p=password"
 echo "/9j/4AAQSkZJRgABAQAAAAAAAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAAIAAgDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAABAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCsAmBv/9k=" | base64 -d > "$TMP/foto.jpg"
 sleep 1
 get "$P" "p=admin_enter"
-post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_id=1" -F "task_id=1" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
+post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_ids[]=1" -F "task_id=1" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
 get "$K" "p=home"
 if grep -q "Juhu" "$TMP/page" && grep -q "+10" "$TMP/page" && grep -q "Erster Schritt" "$TMP/page"; then echo "ok      Konfetti-Karte mit Punkten und neuem Sticker"
 else echo "FEHLER  Konfetti-Karte fehlt nach Bestätigung"; FAIL=1; fi
@@ -68,6 +68,34 @@ K2="$TMP/kid2"
 curl -s -c "$K2" -o "$TMP/page" "$BASE?p=login"
 post "$K2" "p=login" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "uid=1" -d "password=neu4567"
 if grep -q "Hallo Bent" <(curl -s -b "$K2" "$BASE?p=home"); then echo "ok      Passwort ändern"; else echo "FEHLER  Anmeldung mit neuem Passwort klappt nicht"; FAIL=1; fi
+
+# Gemeinsam erledigte Aufgabe: Bent meldet "Hecke schneiden" (50 P.) mit Mieke, Eltern bestätigen, jeder bekommt 25
+get "$P" "p=admin_settings&s=people"
+post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=people" -d "id=2" -d "name=Mieke" \
+  -d "password=mieke123" -d "can_login=on" -d "active=on" -d "action=save_person"
+get "$K2" "p=submit"
+post "$K2" "p=submit" -F "csrf=$(csrf "$TMP/page")" -F "task_id=14" -F "partners[]=2" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
+get "$P" "p=admin"
+grep -q "Zusammen mit" "$TMP/page" || { echo "FEHLER  Freigabe zeigt geteilte Aufgabe nicht"; FAIL=1; }
+SID=$(grep -o 'name="id" value="[0-9]*"' "$TMP/page" | tail -1 | grep -o '[0-9]*')
+post "$P" "p=admin" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "id=$SID" -d "points=50" -d "action=approve_sub"
+get "$P" "p=account&u=2"
+if grep -q "+25" "$TMP/page" && grep -q "mit Bent" "$TMP/page"; then echo "ok      Aufgabe teilen"; else echo "FEHLER  Punkte wurden nicht geteilt"; FAIL=1; fi
+
+# Punkte, die nicht zu Geld werden dürfen: "Tisch decken" (300 P., ohne Geld) zählt nicht fürs Taschengeld
+get "$P" "p=admin_settings&s=tasks"
+post "$P" "p=admin_settings" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "s=tasks" -d "name=Tisch decken" -d "points=300" -d "action=add_task"
+get "$P" "p=admin_enter"
+post "$P" "p=admin_enter" -F "csrf=$(csrf "$TMP/page")" -F "user_ids[]=1" -F "task_id=17" -F "photo=@$TMP/foto.jpg;type=image/jpeg"
+get "$K2" "p=rewards"
+grep -q "davon <b>25</b> für Geld nutzbar" "$TMP/page" || { echo "FEHLER  Geld-Punkte werden falsch angezeigt"; FAIL=1; }
+post "$K2" "p=rewards" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "reward_id=3" -d "qty=1"
+get "$K2" "p=rewards"
+grep -q "Nicht alle deine Punkte" "$TMP/page" && echo "ok      Geld-Sperre" || { echo "FEHLER  Taschengeld trotz gesperrter Punkte möglich"; FAIL=1; }
+post "$K2" "p=rewards" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "reward_id=1" -d "qty=2"
+get "$K2" "p=rewards"
+grep -q "Eingelöst" "$TMP/page" && grep -q "davon <b>25</b> für Geld nutzbar" "$TMP/page" && echo "ok      Andere Belohnung nutzt zuerst Nicht-Geld-Punkte" \
+  || { echo "FEHLER  Bildschirmzeit hat Geld-Punkte verbraucht"; FAIL=1; }
 
 if [ -s data/error.log ]; then echo "FEHLER  data/error.log:"; cat data/error.log; FAIL=1; fi
 if grep -qE "PHP (Fatal|Warning|Notice|Deprecated|Parse)" "$TMP/server.log"; then echo "FEHLER  Server-Log:"; grep -E "PHP " "$TMP/server.log" | head; FAIL=1; fi

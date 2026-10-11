@@ -14,9 +14,16 @@ function page_admin(): void {
             $approve = $action === 'approve_sub';
             $points = max(0, (int)($_POST['points'] ?? 0));
             if ($approve && $points < 1) { flash('Bitte eine Punktzahl eintragen.', 'err'); redirect('admin'); }
+            // bei geteilten Aufgaben alle Zeilen der Gruppe (die erste gehört dem Kind, das gemeldet hat)
+            $st = $pdo->prepare("SELECT id FROM submissions WHERE (id=? OR group_id=?) AND status='pending' ORDER BY id");
+            $st->execute([$id, $id]);
+            $ids = $st->fetchAll(PDO::FETCH_COLUMN);
+            $parts = split_points($points, count($ids));
+            $pdo->beginTransaction();
             $st = $pdo->prepare("UPDATE submissions SET status=?, points=?, comment=?, reviewed_by=?, reviewed_at=? WHERE id=? AND status='pending'");
-            $st->execute([$approve ? 'approved' : 'rejected', $approve ? $points : 0, $comment, $me['id'], now(), $id]);
-            flash($approve ? "Bestätigt: +$points Punkte." : 'Abgelehnt.');
+            foreach ($ids as $i => $sid) $st->execute([$approve ? 'approved' : 'rejected', $approve ? $parts[$i] : 0, $comment, $me['id'], now(), $sid]);
+            $pdo->commit();
+            flash(!$approve ? 'Abgelehnt.' : (count($ids) > 1 ? "Bestätigt: $points Punkte, geteilt auf " . count($ids) . ' Kinder.' : "Bestätigt: +$points Punkte."));
         } elseif ($action === 'approve_red' || $action === 'reject_red') {
             $approve = $action === 'approve_red';
             $st = $pdo->prepare("UPDATE redemptions SET status=?, comment=?, reviewed_by=?, reviewed_at=? WHERE id=? AND status='pending'");
@@ -25,9 +32,11 @@ function page_admin(): void {
         }
         redirect('admin');
     }
-    $subs = $pdo->query("SELECT s.*, u.name AS child, t.points AS default_points FROM submissions s
-                         JOIN users u ON u.id=s.user_id LEFT JOIN tasks t ON t.id=s.task_id
-                         WHERE s.status='pending' ORDER BY s.id")->fetchAll();
+    // geteilte Aufgaben nur einmal zeigen, mit der Summe aller Anteile
+    $subs = $pdo->query("SELECT s.*, u.name AS child, t.points AS default_points,
+                           (SELECT SUM(g.points) FROM submissions g WHERE g.id=s.id OR g.group_id=s.id) AS total
+                         FROM submissions s JOIN users u ON u.id=s.user_id LEFT JOIN tasks t ON t.id=s.task_id
+                         WHERE s.status='pending' AND (s.group_id IS NULL OR s.group_id=s.id) ORDER BY s.id")->fetchAll();
     $reds = $pdo->query("SELECT r.*, u.name AS child FROM redemptions r JOIN users u ON u.id=r.user_id
                          WHERE r.status='pending' ORDER BY r.id")->fetchAll();
     page_header('Freigaben', $me);
@@ -62,12 +71,15 @@ function page_admin(): void {
       <section class="card review">
         <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="proof" src="<?= h(photo_url($s['photo'])) ?>" alt="Nachweisfoto"></a><?php endif; ?>
         <div class="rhead tline"><?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?><h2 class="grow"><?= h($s['child']) ?>: <?= h($s['task_name']) ?></h2></div>
-        <p class="muted"><?= fmt_date($s['created_at']) ?></p>
+        <p class="muted"><?= fmt_date($s['created_at']) ?><?= $s['money_ok'] ? '' : ' · Punkte nicht in Geld einlösbar' ?></p>
+        <?php if (($with = group_names($s, (int)$s['user_id'])) !== ''): ?>
+          <p class="shared">👫 Zusammen mit <b><?= h($with) ?></b> – die Punkte werden gleichmäßig auf alle <?= substr_count($with, ', ') + 2 ?> Kinder verteilt.</p>
+        <?php endif; ?>
         <?php if ($s['note']): ?><p class="comment">„<?= h($s['note']) ?>“</p><?php endif; ?>
         <form method="post" class="decide">
           <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$s['id'] ?>">
           <label class="inline">Punkte <input name="points" type="number" min="0" max="1000" inputmode="numeric"
-              value="<?= $free ? '' : (int)$s['points'] ?>" <?= $free ? 'placeholder="festlegen"' : '' ?>></label>
+              value="<?= $free ? '' : (int)$s['total'] ?>" <?= $free ? 'placeholder="festlegen"' : '' ?>></label>
           <input name="comment" placeholder="Kommentar (optional)" maxlength="200">
           <div class="row">
             <button class="btn primary" name="action" value="approve_sub">✓ Bestätigen</button>
@@ -88,8 +100,8 @@ function page_admin_enter(): void {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         check_csrf();
         try {
-            $kid = (int)($_POST['user_id'] ?? 0);
-            if (!in_array($kid, array_map(fn($k) => (int)$k['id'], $kids), true)) throw new RuntimeException('Bitte ein Kind auswählen.');
+            $sel = array_values(array_intersect(array_map(fn($k) => (int)$k['id'], $kids), array_map('intval', (array)($_POST['user_ids'] ?? $_POST['user_id'] ?? []))));
+            if (!$sel) throw new RuntimeException('Bitte mindestens ein Kind auswählen.');
             $st = db()->prepare('SELECT * FROM tasks WHERE id=?');
             $st->execute([(int)($_POST['task_id'] ?? 0)]);
             $task = $st->fetch();
@@ -99,10 +111,10 @@ function page_admin_enter(): void {
             $photo = photo_from_request();
             if (!$photo) throw new RuntimeException('Bitte ein Foto als Nachweis machen oder auswählen.');
             $note = trim((string)($_POST['note'] ?? '')) ?: null;
-            $ins = db()->prepare("INSERT INTO submissions (user_id, task_id, task_name, note, photo, status, points, created_at, reviewed_by, reviewed_at)
-                                  VALUES (?,?,?,?,?,'approved',?,?,?,?)");
-            $ins->execute([$kid, $task['id'], $task['name'], $note, $photo, $points, now(), $me['id'], now()]);
-            flash("Eingetragen: +$points Punkte.");
+            db()->beginTransaction();
+            create_submissions($sel, $task, $note, $photo, $points, (int)$me['id']);
+            db()->commit();
+            flash(count($sel) > 1 ? "Eingetragen: $points Punkte, geteilt auf " . count($sel) . ' Kinder.' : "Eingetragen: +$points Punkte.");
             redirect('admin_enter');
         } catch (RuntimeException $e) { $error = $e->getMessage(); }
     }
@@ -110,13 +122,14 @@ function page_admin_enter(): void {
     ?>
     <section class="card">
       <h1>Aufgabe für ein Kind eintragen</h1>
-      <p class="muted">Für Heidi oder wenn ein Kind gerade kein Handy dabei hat. Wird sofort gutgeschrieben.</p>
+      <p class="muted">Für Heidi oder wenn ein Kind gerade kein Handy dabei hat. Wird sofort gutgeschrieben.
+        Mehrere Kinder antippen = gemeinsam erledigt, die Punkte werden gleichmäßig geteilt.</p>
       <?php if ($error): ?><div class="flash err"><?= h($error) ?></div><?php endif; ?>
       <form method="post" enctype="multipart/form-data" class="js-photo-form">
         <?= csrf_field() ?>
         <div class="namepick">
           <?php foreach ($kids as $k): ?>
-            <label class="chip"><input type="radio" name="user_id" value="<?= (int)$k['id'] ?>" required><span><?= h($k['name']) ?></span></label>
+            <label class="chip"><input type="checkbox" name="user_ids[]" value="<?= (int)$k['id'] ?>"><span><?= h($k['name']) ?></span></label>
           <?php endforeach; ?>
         </div>
         <label>Aufgabe
@@ -153,11 +166,12 @@ function page_admin_overview(): void {
     <section class="card">
       <p class="muted">Tippe auf einen Namen, um das Konto mit allen Auszahlungen zu sehen.</p>
       <table class="tbl">
-        <thead><tr><th>Kind</th><th class="num">Punkte</th><th class="num">diese Woche</th><th class="num">Aufgaben</th></tr></thead>
+        <thead><tr><th>Kind</th><th class="num">Punkte</th><th class="num">davon Geld</th><th class="num">diese Woche</th><th class="num">Aufgaben</th></tr></thead>
         <tbody>
         <?php foreach ($kids as $k): $wk->execute([$k['id'], $weekStart]); $cnt->execute([$k['id'], $weekStart]); ?>
           <tr><td><a class="kid" href="index.php?p=account&u=<?= (int)$k['id'] ?>"><?= avatar($k) ?> <?= h($k['name']) ?></a></td>
               <td class="num"><b><?= balance((int)$k['id']) ?></b></td>
+              <td class="num"><?= money_balance((int)$k['id']) ?></td>
               <td class="num">+<?= (int)$wk->fetchColumn() ?></td>
               <td class="num"><?= (int)$cnt->fetchColumn() ?></td></tr>
         <?php endforeach; ?>
@@ -171,7 +185,7 @@ function page_admin_overview(): void {
           <li>
             <?php if ($s['photo']): ?><a href="<?= h(photo_url($s['photo'])) ?>" target="_blank"><img class="thumb" src="<?= h(photo_url($s['photo'])) ?>" alt="" loading="lazy"></a>
             <?php else: ?><?= task_img($s['task_name'], 'ticon', $s['task_id'] === null ? null : (int)$s['task_id']) ?><?php endif; ?>
-            <div class="grow"><b><?= h($s['child']) ?>:</b> <?= h($s['task_name']) ?><br><span class="muted"><?= fmt_date($s['created_at']) ?></span>
+            <div class="grow"><b><?= h($s['child']) ?>:</b> <?= h($s['task_name']) ?><br><span class="muted"><?= fmt_date($s['created_at']) ?><?= group_line($s, (int)$s['user_id']) ?></span>
               <?php if ($s['comment']): ?><br><span class="comment">„<?= h($s['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill <?= h($s['status']) ?>"><?= $s['status'] === 'approved' ? '+' . (int)$s['points'] : status_label($s['status']) ?></span>
             <?php if ($s['status'] === 'approved'): ?>
@@ -221,8 +235,8 @@ function page_admin_settings(): void {
                     if ($name === '') throw new RuntimeException('Der Aufgabenname darf nicht leer sein.');
                     $pts = trim((string)($_POST['points'] ?? ''));
                     [$icon, $kw] = task_icon_keyword($name);
-                    $pdo->prepare('UPDATE tasks SET name=?, keyword=?, icon=?, points=?, active=?, sort=? WHERE id=?')
-                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), isset($_POST['active']) ? 1 : 0, (int)($_POST['sort'] ?? 0), $id]);
+                    $pdo->prepare('UPDATE tasks SET name=?, keyword=?, icon=?, points=?, active=?, money_ok=?, sort=? WHERE id=?')
+                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), isset($_POST['active']) ? 1 : 0, isset($_POST['money_ok']) ? 1 : 0, (int)($_POST['sort'] ?? 0), $id]);
                     flash('Aufgabe gespeichert.');
                     break;
                 case 'add_task':
@@ -230,8 +244,8 @@ function page_admin_settings(): void {
                     $pts = trim((string)($_POST['points'] ?? ''));
                     $sort = (int)$pdo->query('SELECT COALESCE(MAX(sort),0)+1 FROM tasks')->fetchColumn();
                     [$icon, $kw] = task_icon_keyword($name);
-                    $pdo->prepare('INSERT INTO tasks (name, keyword, icon, points, sort) VALUES (?,?,?,?,?)')
-                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), $sort]);
+                    $pdo->prepare('INSERT INTO tasks (name, keyword, icon, points, money_ok, sort) VALUES (?,?,?,?,?,?)')
+                        ->execute([$name, $kw, $icon, $pts === '' ? null : max(1, (int)$pts), isset($_POST['money_ok']) ? 1 : 0, $sort]);
                     flash('Aufgabe hinzugefügt.');
                     break;
                 case 'save_reward':
@@ -241,10 +255,11 @@ function page_admin_settings(): void {
                     if ($name === '' || $cost < 1 || $unit === '') throw new RuntimeException('Bitte Name, Punkte und Gegenwert ausfüllen.');
                     if ($a === 'add_reward') {
                         $sort = (int)$pdo->query('SELECT COALESCE(MAX(sort),0)+1 FROM rewards')->fetchColumn();
-                        $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, sort) VALUES (?,?,?,?)')->execute([$name, $cost, $unit, $sort]);
+                        $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, is_money, sort) VALUES (?,?,?,?,?)')
+                            ->execute([$name, $cost, $unit, isset($_POST['is_money']) ? 1 : 0, $sort]);
                     } else {
-                        $pdo->prepare('UPDATE rewards SET name=?, points_cost=?, unit_amount=?, active=? WHERE id=?')
-                            ->execute([$name, $cost, $unit, isset($_POST['active']) ? 1 : 0, $id]);
+                        $pdo->prepare('UPDATE rewards SET name=?, points_cost=?, unit_amount=?, is_money=?, active=? WHERE id=?')
+                            ->execute([$name, $cost, $unit, isset($_POST['is_money']) ? 1 : 0, isset($_POST['active']) ? 1 : 0, $id]);
                     }
                     flash('Belohnung gespeichert.');
                     break;
@@ -270,8 +285,11 @@ function page_admin_settings(): void {
                 case 'delete_sub':
                     $row = approved_row('submissions', $id);
                     $pdo->prepare('DELETE FROM submissions WHERE id=?')->execute([$id]);
-                    // Foto mit entfernen (nur Dateien aus uploads/ im erwarteten Format)
-                    if ($row['photo'] && preg_match('#^\d{4}/\d{2}/[a-f0-9]{24}\.(jpg|png|webp|gif)$#', $row['photo'])) {
+                    // Foto mit entfernen (nur Dateien aus uploads/ im erwarteten Format),
+                    // außer ein anderes Kind derselben geteilten Aufgabe braucht es noch
+                    $still = $pdo->prepare('SELECT COUNT(*) FROM submissions WHERE photo=?');
+                    $still->execute([(string)$row['photo']]);
+                    if ($row['photo'] && (int)$still->fetchColumn() === 0 && preg_match('#^\d{4}/\d{2}/[a-f0-9]{24}\.(jpg|png|webp|gif)$#', $row['photo'])) {
                         @unlink(UPLOAD_DIR . '/' . $row['photo']);
                     }
                     flash('Eintrag entfernt: ' . $row['task_name'] . '.');
@@ -395,7 +413,9 @@ function settings_tasks(): void {
     $tasks = db()->query('SELECT * FROM tasks ORDER BY sort, id')->fetchAll();
     ?>
     <p class="muted">Jede Aufgabe hat ein <b>Stichwort</b> (groß auf der Kachel) und ein <b>Bild</b>. Punkte leer lassen = „Eltern entscheiden“.
-      Ausgeblendete Aufgaben sehen die Kinder nicht.</p>
+      Ausgeblendete Aufgaben sehen die Kinder nicht.<br>
+      <b>„Darf zu Geld werden“</b>: Punkte aus dieser Aufgabe dürfen für Geld-Belohnungen (z. B. Taschengeld) eingelöst werden.
+      Ohne Haken (z. B. Tisch decken) zählen sie nur für andere Belohnungen wie Bildschirmzeit. Gilt für alles, was ab jetzt gemeldet wird.</p>
     <script>window.TASK_ICON_SRC = <?= json_encode(array_combine(array_keys(TASK_ICONS), array_map('icon_src', array_keys(TASK_ICONS)))) ?>;</script>
     <?php foreach ($tasks as $t): ?>
       <form method="post" class="card setting taskedit">
@@ -413,6 +433,7 @@ function settings_tasks(): void {
           <label>Reihenfolge<input name="sort" type="number" value="<?= (int)$t['sort'] ?>" inputmode="numeric"></label>
           <label class="check te-active"><input type="checkbox" name="active" <?= $t['active'] ? 'checked' : '' ?>> Aktiv</label>
         </div>
+        <label class="check"><input type="checkbox" name="money_ok" <?= $t['money_ok'] ? 'checked' : '' ?>> 💶 Darf zu Geld werden</label>
         <button class="btn primary" name="action" value="save_task">Speichern</button>
       </form>
     <?php endforeach; ?>
@@ -431,6 +452,7 @@ function settings_tasks(): void {
         <label>Beschreibung<input name="name" required placeholder="z. B. Fenster putzen"></label>
         <label>Punkte <span class="muted">(leer = frei)</span><input name="points" type="number" min="1" inputmode="numeric"></label>
       </div>
+      <label class="check"><input type="checkbox" name="money_ok" checked> 💶 Darf zu Geld werden</label>
       <button class="btn primary" name="action" value="add_task">Hinzufügen</button>
     </form>
     <?php
@@ -482,7 +504,7 @@ function settings_entries(): void {
             <?php if ($x['photo']): ?><a href="<?= h(photo_url($x['photo'])) ?>" target="_blank" class="tpic"><?= task_img((string)$x['task_name'], 'ticon', $x['task_id'] === null ? null : (int)$x['task_id']) ?><img class="thumb mini" src="<?= h(photo_url($x['photo'])) ?>" alt="Foto" loading="lazy"></a>
             <?php else: ?><?= task_img((string)$x['task_name'], 'ticon', $x['task_id'] === null ? null : (int)$x['task_id']) ?><?php endif; ?>
             <div class="grow"><b><?= h($x['child']) ?>:</b> <?= h($x['task_name']) ?><br>
-              <span class="muted"><?= fmt_date($x['created_at']) ?><?= $x['reviewer'] ? ' · bestätigt von ' . h($x['reviewer']) : '' ?></span>
+              <span class="muted"><?= fmt_date($x['created_at']) ?><?= $x['reviewer'] ? ' · bestätigt von ' . h($x['reviewer']) : '' ?><?= group_line($x, (int)$x['user_id']) ?></span>
               <?php if ($x['comment']): ?><br><span class="comment">„<?= h($x['comment']) ?>“</span><?php endif; ?></div>
             <span class="pill approved">+<?= (int)$x['points'] ?></span>
           </div>
@@ -501,7 +523,7 @@ function settings_entries(): void {
               <div class="row">
                 <button class="btn primary" name="action" value="edit_sub">Speichern</button>
                 <button class="btn danger" name="action" value="delete_sub" formnovalidate
-                  onclick="return confirm(<?= h(json_encode('„' . $x['task_name'] . '“ von ' . $x['child'] . ' wirklich entfernen? ' . (int)$x['points'] . ' Punkte werden abgezogen, das Foto wird gelöscht.' . ($kb - (int)$x['points'] < 0 ? ' Achtung: Der Punktestand wäre danach ' . ($kb - (int)$x['points']) . '.' : ''), JSON_UNESCAPED_UNICODE)) ?>)">🗑️ Entfernen</button>
+                  onclick="return confirm(<?= h(json_encode('„' . $x['task_name'] . '“ von ' . $x['child'] . ' wirklich entfernen? ' . (int)$x['points'] . ' Punkte werden abgezogen' . ($x['group_id'] ? ' (nur bei ' . $x['child'] . ', die anderen behalten ihren Anteil).' : ', das Foto wird gelöscht.') . ($kb - (int)$x['points'] < 0 ? ' Achtung: Der Punktestand wäre danach ' . ($kb - (int)$x['points']) . '.' : ''), JSON_UNESCAPED_UNICODE)) ?>)">🗑️ Entfernen</button>
               </div>
             </form>
           </details>
@@ -550,7 +572,8 @@ function settings_rewards(): void {
     $mx = [];
     foreach (db()->query('SELECT * FROM reward_user')->fetchAll() as $r) $mx[$r['reward_id'] . '_' . $r['user_id']] = $r;
     ?>
-    <p class="muted">Kurs = wie viele Punkte eine Einheit kostet. Die Bildschirmzeit selbst stellt ihr weiter am iPhone bzw. an der PlayStation ein.</p>
+    <p class="muted">Kurs = wie viele Punkte eine Einheit kostet. Die Bildschirmzeit selbst stellt ihr weiter am iPhone bzw. an der PlayStation ein.<br>
+      <b>„Ist Geld“</b>: Für diese Belohnung zählen nur Punkte aus Aufgaben, die zu Geld werden dürfen (einstellbar unter „Aufgaben“).</p>
     <?php foreach ($rewards as $r): ?>
       <form method="post" class="card setting">
         <?= csrf_field() ?><input type="hidden" name="s" value="rewards"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
@@ -559,6 +582,7 @@ function settings_rewards(): void {
           <label>Punkte<input name="points_cost" type="number" min="1" value="<?= (int)$r['points_cost'] ?>" required></label>
           <label>Gegenwert<input name="unit_amount" value="<?= h($r['unit_amount']) ?>" required></label>
         </div>
+        <label class="check"><input type="checkbox" name="is_money" <?= $r['is_money'] ? 'checked' : '' ?>> 💶 Ist Geld (z. B. Taschengeld)</label>
         <label class="check"><input type="checkbox" name="active" <?= $r['active'] ? 'checked' : '' ?>> Aktiv</label>
         <button class="btn primary" name="action" value="save_reward">Speichern</button>
       </form>
@@ -571,6 +595,7 @@ function settings_rewards(): void {
         <label>Punkte<input name="points_cost" type="number" min="1" required></label>
         <label>Gegenwert<input name="unit_amount" required placeholder="z. B. 1 Ticket"></label>
       </div>
+      <label class="check"><input type="checkbox" name="is_money"> 💶 Ist Geld (z. B. Taschengeld)</label>
       <button class="btn primary" name="action" value="add_reward">Hinzufügen</button>
     </form>
 
@@ -580,7 +605,7 @@ function settings_rewards(): void {
       <p class="muted">Haken = Kind sieht die Belohnung. Eigener Kurs leer = Standardkurs.</p>
       <div class="scroll">
       <table class="tbl matrix">
-        <thead><tr><th></th><?php foreach ($rewards as $r): ?><th><?= h($r['name']) ?><br><span class="muted"><?= (int)$r['points_cost'] ?> P. = <?= h($r['unit_amount']) ?></span></th><?php endforeach; ?></tr></thead>
+        <thead><tr><th></th><?php foreach ($rewards as $r): ?><th><?= h($r['name']) ?><?= $r['is_money'] ? ' 💶' : '' ?><br><span class="muted"><?= (int)$r['points_cost'] ?> P. = <?= h($r['unit_amount']) ?></span></th><?php endforeach; ?></tr></thead>
         <tbody>
         <?php foreach ($kids as $k): ?>
           <tr><td><b><?= h($k['name']) ?></b></td>

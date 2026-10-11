@@ -125,6 +125,26 @@ function init_schema(PDO $pdo): void {
     } catch (Throwable $e) {
         app_log('Migration Aufgaben: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());
     }
+    // Migration: geteilte Aufgaben und Punkte, die (nicht) in Geld eingelöst werden dürfen
+    $add = function (string $table, string $col, string $def) use ($pdo): bool {
+        $cols = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
+        if (in_array($col, $cols, true)) return false;
+        $pdo->exec("ALTER TABLE $table ADD COLUMN $col $def");
+        return true;
+    };
+    // money_ok = Punkte aus dieser Aufgabe dürfen in Geld eingelöst werden
+    $add('tasks', 'money_ok', 'INTEGER NOT NULL DEFAULT 1');
+    $add('submissions', 'money_ok', 'INTEGER NOT NULL DEFAULT 1');
+    // group_id = gemeinsam erledigte Aufgabe: jedes Kind hat eine eigene Zeile mit seinem Anteil,
+    // alle Zeilen zeigen auf die Zeile des Kindes, das gemeldet hat
+    $add('submissions', 'group_id', 'INTEGER');
+    // is_money = Belohnung ist Geld (z. B. Taschengeld)
+    if ($add('rewards', 'is_money', 'INTEGER NOT NULL DEFAULT 0')) {
+        $pdo->exec("UPDATE rewards SET is_money=1 WHERE unit_amount LIKE '%€%' OR name LIKE '%geld%'");
+    }
+    if ($add('redemptions', 'is_money', 'INTEGER NOT NULL DEFAULT 0')) {
+        $pdo->exec('UPDATE redemptions SET is_money=1 WHERE reward_id IN (SELECT id FROM rewards WHERE is_money=1)');
+    }
 }
 
 // Fehler in data/error.log schreiben (Ordner ist von außen gesperrt)
@@ -156,10 +176,10 @@ function seed_defaults(): void {
         }
     }
     if ((int)$pdo->query('SELECT COUNT(*) FROM rewards')->fetchColumn() === 0) {
-        $st = $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, sort) VALUES (?,?,?,?)');
-        $st->execute(['Bildschirmzeit iPhone', 100, '30 Min.', 0]);
-        $st->execute(['PlayStation-Zeit', 100, '30 Min.', 1]);
-        $st->execute(['Taschengeld', 100, '1 €', 2]);
+        $st = $pdo->prepare('INSERT INTO rewards (name, points_cost, unit_amount, sort, is_money) VALUES (?,?,?,?,?)');
+        $st->execute(['Bildschirmzeit iPhone', 100, '30 Min.', 0, 0]);
+        $st->execute(['PlayStation-Zeit', 100, '30 Min.', 1, 0]);
+        $st->execute(['Taschengeld', 100, '1 €', 2, 1]);
     }
     if ((int)$pdo->query("SELECT COUNT(*) FROM users WHERE role='child'")->fetchColumn() === 0) {
         // Kinder ohne Passwort – die Eltern vergeben die Passwörter im Elternbereich
@@ -215,14 +235,65 @@ function require_parent(): array {
 }
 
 // ---------- Punkte ----------
-function balance(int $userId): int {
-    $pdo = db();
-    $earned = $pdo->prepare("SELECT COALESCE(SUM(points),0) FROM submissions WHERE user_id=? AND status='approved'");
-    $earned->execute([$userId]);
+// $moneyOnly: nur Punkte aus Aufgaben, die in Geld eingelöst werden dürfen, bzw. nur Geld-Belohnungen
+function points_earned(int $userId, bool $moneyOnly = false): int {
+    $st = db()->prepare("SELECT COALESCE(SUM(points),0) FROM submissions WHERE user_id=? AND status='approved'" . ($moneyOnly ? ' AND money_ok=1' : ''));
+    $st->execute([$userId]);
+    return (int)$st->fetchColumn();
+}
+function points_spent(int $userId, bool $moneyOnly = false): int {
     // offene und bestätigte Einlösungen sind schon reserviert
-    $spent = $pdo->prepare("SELECT COALESCE(SUM(points),0) FROM redemptions WHERE user_id=? AND status IN ('pending','approved')");
-    $spent->execute([$userId]);
-    return (int)$earned->fetchColumn() - (int)$spent->fetchColumn();
+    $st = db()->prepare("SELECT COALESCE(SUM(points),0) FROM redemptions WHERE user_id=? AND status IN ('pending','approved')" . ($moneyOnly ? ' AND is_money=1' : ''));
+    $st->execute([$userId]);
+    return (int)$st->fetchColumn();
+}
+function balance(int $userId): int {
+    return points_earned($userId) - points_spent($userId);
+}
+// Punkte, die (noch) in Geld eingelöst werden dürfen. Andere Belohnungen (z. B. Bildschirmzeit)
+// verbrauchen zuerst die Punkte, die nicht zu Geld werden dürfen.
+function money_balance(int $userId): int {
+    return max(0, min(balance($userId), points_earned($userId, true) - points_spent($userId, true)));
+}
+
+// ---------- Gemeinsam erledigte Aufgaben ----------
+// Punkte gleichmäßig aufteilen, ein Rest geht an das erste Kind (das gemeldet hat)
+function split_points(int $total, int $n): array {
+    $each = intdiv($total, max(1, $n));
+    $parts = array_fill(0, max(1, $n), $each);
+    $parts[0] += $total - $each * count($parts);
+    return $parts;
+}
+// Legt die Aufgabe für ein oder mehrere Kinder an (das erste Kind hat gemeldet). Gibt die ID der ersten Zeile zurück.
+function create_submissions(array $userIds, array $task, ?string $note, ?string $photo, int $total, ?int $reviewerId = null): int {
+    $pdo = db();
+    $userIds = array_values(array_unique(array_map('intval', $userIds)));
+    $parts = split_points($total, count($userIds));
+    $status = $reviewerId ? 'approved' : 'pending';
+    $ins = $pdo->prepare('INSERT INTO submissions (user_id, task_id, task_name, note, photo, status, points, money_ok, group_id, created_at, reviewed_by, reviewed_at)
+                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+    $head = null;
+    foreach ($userIds as $i => $uid) {
+        $ins->execute([$uid, $task['id'], $task['name'], $note, $photo, $status, $parts[$i], (int)($task['money_ok'] ?? 1),
+                       $head, now(), $reviewerId, $reviewerId ? now() : null]);
+        if ($head === null) {
+            $head = (int)$pdo->lastInsertId();
+            if (count($userIds) > 1) $pdo->prepare('UPDATE submissions SET group_id=? WHERE id=?')->execute([$head, $head]);
+        }
+    }
+    return (int)$head;
+}
+// Namen der anderen Kinder, mit denen die Aufgabe geteilt wurde ('' = nicht geteilt)
+function group_names(array $row, int $exceptUserId = 0): string {
+    if (empty($row['group_id'])) return '';
+    $st = db()->prepare('SELECT u.name FROM submissions s JOIN users u ON u.id=s.user_id
+                         WHERE s.group_id=? AND s.user_id<>? ORDER BY s.id');
+    $st->execute([(int)$row['group_id'], $exceptUserId]);
+    return implode(', ', $st->fetchAll(PDO::FETCH_COLUMN));
+}
+function group_line(array $row, int $exceptUserId): string {
+    $names = group_names($row, $exceptUserId);
+    return $names === '' ? '' : ' · 👫 mit ' . h($names);
 }
 
 function rewards_for(int $userId): array {
@@ -481,7 +552,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <meta name="theme-color" content="#5ec4f2">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=9">
+<link rel="stylesheet" href="assets/style.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -571,7 +642,8 @@ function brand_logo(): string {
 }
 
 function pending_count(): int {
-    $a = (int)db()->query("SELECT COUNT(*) FROM submissions WHERE status='pending'")->fetchColumn();
+    // geteilte Aufgaben zählen nur einmal
+    $a = (int)db()->query("SELECT COUNT(*) FROM submissions WHERE status='pending' AND (group_id IS NULL OR group_id=id)")->fetchColumn();
     $b = (int)db()->query("SELECT COUNT(*) FROM redemptions WHERE status='pending'")->fetchColumn();
     return $a + $b;
 }
