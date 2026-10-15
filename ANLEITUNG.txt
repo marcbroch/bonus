@@ -63,6 +63,10 @@ der App erscheint für 3 Sekunden eins von 5 Halloween-Motiven (zufällig);
 antippen schließt es sofort. Ab dem
 2.11.2026 erscheint automatisch wieder das normale Design – dafür muss
 nichts hochgeladen werden.
+Vom 30.11. bis einschließlich 26.12.2026 zeigt die App ein Weihnachts-
+Design (Abendhimmel mit Stern, fallender Schnee, verschneite Wiese mit
+Tannenbäumen und Geschenken) – ohne Startbildschirm. Ab dem 27.12.2026
+kommt wieder das normale Design.
 
 Passwort ändern: Jeder kann sein eigenes Passwort oben über
 "🔑 Passwort" ändern (Kinder auch unter "Mein Konto"). Dafür braucht

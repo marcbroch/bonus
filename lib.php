@@ -575,12 +575,15 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <?php $skin = active_skin(); ?>
-<meta name="theme-color" content="<?= $skin === 'halloween' ? '#1b1035' : '#5ec4f2' ?>">
+<meta name="theme-color" content="<?= ['halloween' => '#1b1035', 'weihnachten' => '#16325c'][$skin] ?? '#5ec4f2' ?>">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css?v=10">
 <?php if ($skin): ?><link rel="stylesheet" href="assets/skin-<?= h($skin) ?>.css?v=2"><?php endif; ?>
 </head>
 <body<?= $skin ? ' class="skin-' . h($skin) . '"' : '' ?>>
+<?php if ($skin === 'weihnachten'): ?>
+<div class="xm-snow" aria-hidden="true"><?php for ($i = 1; $i <= 14; $i++): ?><span class="f<?= $i ?>">❄</span><?php endfor; ?></div>
+<?php endif; ?>
 <?php if ($skin === 'halloween'): ?>
 <div class="hw-deco" aria-hidden="true"><span class="bat b1">🦇</span><span class="bat b2">🦇</span><span class="bat b3">🦇</span><span class="ghost">👻</span></div>
 <?php
@@ -599,7 +602,7 @@ function page_header(string $title, ?array $user = null): void {
 <?php endif; ?>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
-    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus<?= $skin === 'halloween' ? ' 🎃' : '' ?></span></span></a>
+    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus<?= ['halloween' => ' 🎃', 'weihnachten' => ' 🎄'][$skin] ?? '' ?></span></span></a>
   <?php if ($user): ?>
     <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
@@ -629,7 +632,7 @@ function page_header(string $title, ?array $user = null): void {
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=9"></script>
+<script src="assets/app.js?v=10"></script>
 </body>
 </html>
 <?php
@@ -647,6 +650,7 @@ function shade(string $hex, float $f): string {
 // Die App schaltet nur anhand des Datums um – kein Upload nötig.
 const SKINS = [
     ['halloween', '2026-10-01', '2026-11-02'],   // bis einschließlich 1.11.2026
+    ['weihnachten', '2026-11-30', '2026-12-27'], // 30.11. bis einschließlich 26.12.2026
 ];
 
 // Aktiver Skin ('' = normales Design). Zum Testen: Umgebungsvariable BONUS_SKIN=halloween bzw. =normal
@@ -671,6 +675,11 @@ function brand_logo(): string {
         $letters = [['B', '#ff7a00'], ['R', '#9b4dff'], ['O', '#7ed321'], ['C', '#ff7a00'], ['H', '#9b4dff'],
                     ['H', '#7ed321'], ['A', '#ff7a00'], ['U', '#9b4dff'], ['S', '#7ed321']];
         $starColors = ['#ff9a1f', '#b06cff', '#ffd23f', '#7ed321', '#ff9a1f'];
+    } elseif (active_skin() === 'weihnachten') {
+        // Weihnachtsrot, Tannengrün und Gold
+        $letters = [['B', '#e3263a'], ['R', '#2e9e4f'], ['O', '#f2b705'], ['C', '#e3263a'], ['H', '#2e9e4f'],
+                    ['H', '#f2b705'], ['A', '#e3263a'], ['U', '#2e9e4f'], ['S', '#f2b705']];
+        $starColors = ['#ffd84d', '#ffffff', '#ffd84d', '#ffffff', '#ffd84d'];
     }
     $defs = $fill = $back = '';
     foreach ($letters as $i => [$ch, $c]) {
