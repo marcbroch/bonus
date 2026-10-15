@@ -1,0 +1,87 @@
+/* Weihnachts-Skin – wird nur geladen, solange active_skin() "weihnachten" liefert (30.11. bis 26.12.2026) */
+body.skin-weihnachten {
+  --sky-top: #16325c; --sky-bottom: #2f5a96; --grass: #f4f9ff; --grass-dark: #d6e6f7;
+  --sun: #ffd84d; --sun-dark: #c98a00;
+  background:
+    radial-gradient(circle 1.5px at 10% 110px, #fff 95%, transparent), radial-gradient(circle 1px at 26% 260px, #fff 95%, transparent),
+    radial-gradient(circle 2px at 41% 80px, #fff3b0 95%, transparent), radial-gradient(circle 1px at 57% 200px, #fff 95%, transparent),
+    radial-gradient(circle 1.5px at 72% 130px, #fff 95%, transparent), radial-gradient(circle 1px at 88% 330px, #fff 95%, transparent),
+    linear-gradient(180deg, var(--sky-top) 0, var(--sky-bottom) 80vh, var(--sky-bottom) 100%);
+}
+html:has(body.skin-weihnachten) { background: #16325c; }
+
+/* Verschneite Wiese mit Tannenbäumen und Geschenken */
+body.skin-weihnachten::after {
+  height: 130px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='120' viewBox='0 0 600 120' preserveAspectRatio='none'%3E%3Cg transform=%22translate%2870 92%29 scale%281.15%29%22%3E%3Crect x='-4' y='0' width='8' height='10' fill='%238a5a2b' stroke='%232b2a3d' stroke-width='2'/%3E%3Cpath d='M-30 -2 L0 -28 L30 -2Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-26 -3 q26 6 52 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-24 -16 L0 -40 L24 -16Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-20 -17 q20 6 40 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-16 -29 L0 -51 L16 -29Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-12 -30 q12 6 24 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='-10' cy='-8' r='3' fill='%23e3263a'/%3E%3Ccircle cx='9' cy='-22' r='3' fill='%23f2b705'/%3E%3Ccircle cx='-4' cy='-34' r='2.5' fill='%237fd1ff'/%3E%3Cpath d='M0 -58 l3 7 l7 0 l-6 4 l2 7 l-6 -4 l-6 4 l2 -7 l-6 -4 l7 0z' fill='%23ffd84d' stroke='%232b2a3d' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/g%3E%3Cg transform='translate%28120 98%29'%3E%3Crect x='-11' y='-18' width='22' height='18' rx='2' fill='%23e3263a' stroke='%232b2a3d' stroke-width='2'/%3E%3Crect x='-2.5' y='-18' width='5' height='18' fill='%23f2b705'/%3E%3Cpath d='M0 -18 q-8 -10 -10 -2 q4 2 10 2 q6 0 10 -2 q-2 -8 -10 2z' fill='%23f2b705' stroke='%232b2a3d' stroke-width='1.5'/%3E%3C/g%3E%3Cg transform=%22translate%28330 96%29 scale%280.8%29%22%3E%3Crect x='-4' y='0' width='8' height='10' fill='%238a5a2b' stroke='%232b2a3d' stroke-width='2'/%3E%3Cpath d='M-30 -2 L0 -28 L30 -2Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-26 -3 q26 6 52 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-24 -16 L0 -40 L24 -16Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-20 -17 q20 6 40 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-16 -29 L0 -51 L16 -29Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-12 -30 q12 6 24 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='-10' cy='-8' r='3' fill='%23e3263a'/%3E%3Ccircle cx='9' cy='-22' r='3' fill='%23f2b705'/%3E%3Ccircle cx='-4' cy='-34' r='2.5' fill='%237fd1ff'/%3E%3Cpath d='M0 -58 l3 7 l7 0 l-6 4 l2 7 l-6 -4 l-6 4 l2 -7 l-6 -4 l7 0z' fill='%23ffd84d' stroke='%232b2a3d' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/g%3E%3Cg transform=%22translate%28500 90%29 scale%281.25%29%22%3E%3Crect x='-4' y='0' width='8' height='10' fill='%238a5a2b' stroke='%232b2a3d' stroke-width='2'/%3E%3Cpath d='M-30 -2 L0 -28 L30 -2Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-26 -3 q26 6 52 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-24 -16 L0 -40 L24 -16Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-20 -17 q20 6 40 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M-16 -29 L0 -51 L16 -29Z' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M-12 -30 q12 6 24 0' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='-10' cy='-8' r='3' fill='%23e3263a'/%3E%3Ccircle cx='9' cy='-22' r='3' fill='%23f2b705'/%3E%3Ccircle cx='-4' cy='-34' r='2.5' fill='%237fd1ff'/%3E%3Cpath d='M0 -58 l3 7 l7 0 l-6 4 l2 7 l-6 -4 l-6 4 l2 -7 l-6 -4 l7 0z' fill='%23ffd84d' stroke='%232b2a3d' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/g%3E%3Cg transform='translate%28455 100%29'%3E%3Crect x='-11' y='-18' width='22' height='18' rx='2' fill='%232e9e4f' stroke='%232b2a3d' stroke-width='2'/%3E%3Crect x='-2.5' y='-18' width='5' height='18' fill='%23e3263a'/%3E%3Cpath d='M0 -18 q-8 -10 -10 -2 q4 2 10 2 q6 0 10 -2 q-2 -8 -10 2z' fill='%23e3263a' stroke='%232b2a3d' stroke-width='1.5'/%3E%3C/g%3E%3Cg transform='translate%28545 100%29'%3E%3Crect x='-11' y='-18' width='22' height='18' rx='2' fill='%23f2b705' stroke='%232b2a3d' stroke-width='2'/%3E%3Crect x='-2.5' y='-18' width='5' height='18' fill='%23e3263a'/%3E%3Cpath d='M0 -18 q-8 -10 -10 -2 q4 2 10 2 q6 0 10 -2 q-2 -8 -10 2z' fill='%23e3263a' stroke='%232b2a3d' stroke-width='1.5'/%3E%3C/g%3E%3C/svg%3E") center 0 / 100% 120px no-repeat,
+    radial-gradient(ellipse 60% 60px at 25% 78px, var(--grass) 98%, transparent 100%),
+    radial-gradient(ellipse 60% 60px at 80% 82px, var(--grass) 98%, transparent 100%),
+    linear-gradient(var(--grass), var(--grass-dark)) 0 100% / 100% 60px no-repeat;
+}
+
+/* Leuchtender Weihnachtsstern statt Sonne */
+body.skin-weihnachten .top::before {
+  width: 78px; height: 78px; right: -6px; top: calc(-4px + env(safe-area-inset-top)); border-radius: 0; animation: xm-glow 3s ease-in-out infinite;
+  background: radial-gradient(circle, #fffbe0 0 22%, #ffd84d 40%, #f2b705 100%);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+@keyframes xm-glow { 0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 216, 77, .6)); transform: scale(1); } 50% { filter: drop-shadow(0 0 16px rgba(255, 216, 77, .9)); transform: scale(1.06); } }
+
+/* Fallender Schnee (hinter den Inhalten) */
+.xm-snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.xm-snow span { position: absolute; top: -40px; color: #fff; opacity: .85; text-shadow: 0 0 4px rgba(255, 255, 255, .6); animation: xm-fall linear infinite; }
+.xm-snow .f1 { left: 4%; font-size: 14px; animation-duration: 11s; animation-delay: -1s; }
+.xm-snow .f2 { left: 11%; font-size: 20px; animation-duration: 15s; animation-delay: -7s; }
+.xm-snow .f3 { left: 18%; font-size: 12px; animation-duration: 10s; animation-delay: -3s; }
+.xm-snow .f4 { left: 26%; font-size: 17px; animation-duration: 13s; animation-delay: -9s; }
+.xm-snow .f5 { left: 33%; font-size: 13px; animation-duration: 12s; animation-delay: -5s; }
+.xm-snow .f6 { left: 41%; font-size: 22px; animation-duration: 17s; animation-delay: -12s; }
+.xm-snow .f7 { left: 49%; font-size: 12px; animation-duration: 9s; animation-delay: -2s; }
+.xm-snow .f8 { left: 57%; font-size: 16px; animation-duration: 14s; animation-delay: -8s; }
+.xm-snow .f9 { left: 64%; font-size: 13px; animation-duration: 11s; animation-delay: -4s; }
+.xm-snow .f10 { left: 72%; font-size: 19px; animation-duration: 16s; animation-delay: -10s; }
+.xm-snow .f11 { left: 79%; font-size: 12px; animation-duration: 10s; animation-delay: -6s; }
+.xm-snow .f12 { left: 86%; font-size: 15px; animation-duration: 13s; animation-delay: -11s; }
+.xm-snow .f13 { left: 92%; font-size: 21px; animation-duration: 18s; animation-delay: -14s; }
+.xm-snow .f14 { left: 97%; font-size: 12px; animation-duration: 12s; animation-delay: -3s; }
+@keyframes xm-fall {
+  0% { transform: translate(0, 0) rotate(0); } 50% { transform: translate(18px, 55vh) rotate(180deg); }
+  100% { transform: translate(-10px, 110vh) rotate(360deg); }
+}
+
+/* Navigation: Rot, Tannengrün, Gold, Nachtblau */
+body.skin-weihnachten .tabs { background: linear-gradient(180deg, rgba(22, 50, 92, .95), rgba(22, 50, 92, 0)); }
+body.skin-weihnachten .tabs a { border-color: #fff; }
+body.skin-weihnachten .tabs a:nth-child(4n+1) { background: #d62839; }
+body.skin-weihnachten .tabs a:nth-child(4n+2) { background: #23803f; }
+body.skin-weihnachten .tabs a:nth-child(4n+3) { background: #f2b705; color: #2b2a3d; }
+body.skin-weihnachten .tabs a:nth-child(4n+4) { background: #1f4e8c; }
+body.skin-weihnachten .tabs a.on { background: #fff; color: var(--ink); border-color: #f2b705; box-shadow: 0 4px 0 #c98a00; }
+body.skin-weihnachten .logo .sub { color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+
+/* Texte direkt auf dem Abendhimmel hell machen */
+body.skin-weihnachten main > h1, body.skin-weihnachten main > h2 { color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+body.skin-weihnachten main > p.muted, body.skin-weihnachten main > p:not(.card) { color: #e4eefb; }
+body.skin-weihnachten main > p > a, body.skin-weihnachten main > .muted a { color: #ffd84d; }
+
+/* Karten mit goldenem Rand, Überschriften in Weihnachtsrot */
+body.skin-weihnachten .card { border-color: #f6dc8a; }
+body.skin-weihnachten h1, body.skin-weihnachten h2 { color: #a3172b; }
+
+/* Punktestand als rotes Geschenk-Taler */
+body.skin-weihnachten .hero {
+  background: radial-gradient(circle at 50% -30%, #ff8a96 0, #cc1d31 50%, #a3172b 100%);
+  border-color: #f6dc8a; box-shadow: 0 6px 0 #7d0d1d, 0 14px 28px rgba(227, 38, 58, .35);
+}
+body.skin-weihnachten .hero::before { content: "🎄"; }
+body.skin-weihnachten .hero::after { content: "🎁"; }
+body.skin-weihnachten .hero .label, body.skin-weihnachten .hero .keep, body.skin-weihnachten .hero .big small { color: #ffffff; }
+body.skin-weihnachten .hero .big { -webkit-text-stroke-color: #7d0d1d; text-shadow: 0 4px 0 #5e0814; }
+body.skin-weihnachten .hero .worth span { background: rgba(255, 255, 255, .85); color: var(--ink); }
+
+body.skin-weihnachten .flash::before { content: "🎄 "; }
+body.skin-weihnachten .flash.err::before { content: "❄️ "; }
+body.skin-weihnachten .bar span, body.skin-weihnachten .stprog span { background: linear-gradient(90deg, #e3263a, #2e9e4f); }
+body.skin-weihnachten .cel-card { border-color: #f2b705; box-shadow: 0 8px 0 #a3172b, 0 18px 40px rgba(0, 0, 0, .4); }
+body.skin-weihnachten .celebrate { background: rgba(22, 50, 92, .6); }

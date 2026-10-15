@@ -29,7 +29,9 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
 - Saison-Designs („Skins“): `SKINS` in `lib.php` legt Name, ersten Tag und Endtag
   (ausschließlich) fest; `active_skin()` wählt nach Datum. Ein aktiver Skin lädt
   zusätzlich `assets/skin-<name>.css` und setzt `class="skin-<name>"` am `<body>`.
-  Zum lokalen Testen: `BONUS_SKIN=halloween` bzw. `BONUS_SKIN=normal`.
+  Zum lokalen Testen: `BONUS_SKIN=halloween`, `BONUS_SKIN=weihnachten` bzw.
+  `BONUS_SKIN=normal`. 2026: Halloween bis 1.11. (mit Startbildschirm-Motiven),
+  Weihnachten 30.11.–26.12. (ohne Startbildschirm).
 - Alle Links müssen **relativ** bleiben (z. B. `index.php?p=home`), weil die
   App im Unterordner `/bonus` läuft.
 - Bei Änderungen an CSS oder JS die Versionsnummer `?v=` in `lib.php`

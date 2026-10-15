@@ -101,14 +101,21 @@ get "$K2" "p=rewards"
 grep -q "Eingelöst" "$TMP/page" && grep -q "davon <b>25</b> für Geld nutzbar" "$TMP/page" && echo "ok      Andere Belohnung nutzt zuerst Nicht-Geld-Punkte" \
   || { echo "FEHLER  Bildschirmzeit hat Geld-Punkte verbraucht"; FAIL=1; }
 
-# Saison-Designs: Halloween bis einschließlich 1.11.2026, ab 2.11.2026 wieder normal
-SKINS=$(php -r 'require "lib.php"; foreach (["2026-10-15","2026-11-01","2026-11-02","2027-01-01"] as $d) echo (active_skin($d) ?: "normal"), " ";')
-if [ "$SKINS" = "halloween halloween normal normal " ]; then echo "ok      Halloween-Design endet am 2.11.2026"; else echo "FEHLER  Datumsumschaltung: $SKINS"; FAIL=1; fi
-if [ "$(php -r 'require "lib.php"; echo active_skin();')" = "halloween" ]; then
-  grep -q "skin-halloween" <(curl -s -b "$K" "$BASE?p=home") && echo "ok      Halloween-Design wird angezeigt" || { echo "FEHLER  Halloween-Design fehlt"; FAIL=1; }
-  grep -qE 'js-splash.*|assets/halloween/motiv[1-5]\.svg' <(curl -s "$BASE?p=login") && [ -s assets/halloween/motiv5.svg ] && echo "ok      Halloween-Startbildschirm" || { echo "FEHLER  Halloween-Startbildschirm fehlt"; FAIL=1; }
+# Saison-Designs: Halloween bis 1.11.2026, Weihnachten 30.11.–26.12.2026, sonst normal
+SKINS=$(php -r 'require "lib.php"; foreach (["2026-10-15","2026-11-01","2026-11-02","2026-11-29","2026-11-30","2026-12-26","2026-12-27"] as $d) echo (active_skin($d) ?: "normal"), " ";')
+if [ "$SKINS" = "halloween halloween normal normal weihnachten weihnachten normal " ]; then echo "ok      Datumsumschaltung der Saison-Designs"; else echo "FEHLER  Datumsumschaltung: $SKINS"; FAIL=1; fi
+SKIN=$(php -r 'require "lib.php"; echo active_skin();')
+PAGE=$(curl -s -b "$K" "$BASE?p=home")
+if [ -n "$SKIN" ]; then
+  grep -q "skin-$SKIN" <<<"$PAGE" && echo "ok      Design $SKIN wird angezeigt" || { echo "FEHLER  Design $SKIN fehlt"; FAIL=1; }
 else
-  grep -q "skin-halloween" <(curl -s -b "$K" "$BASE?p=home") && { echo "FEHLER  Halloween-Design wird nach dem 1.11. noch angezeigt"; FAIL=1; } || echo "ok      Normales Design"
+  grep -q "skin-" <<<"$PAGE" && { echo "FEHLER  Saison-Design außerhalb des Zeitraums"; FAIL=1; } || echo "ok      Normales Design"
+fi
+LOGIN=$(curl -s "$BASE?p=login")
+if [ "$SKIN" = "halloween" ]; then
+  grep -q 'js-splash' <<<"$LOGIN" && [ -s assets/halloween/motiv5.svg ] && echo "ok      Halloween-Startbildschirm" || { echo "FEHLER  Halloween-Startbildschirm fehlt"; FAIL=1; }
+else
+  grep -q 'js-splash' <<<"$LOGIN" && { echo "FEHLER  Startbildschirm außerhalb von Halloween"; FAIL=1; } || echo "ok      Kein Startbildschirm"
 fi
 
 if [ -s data/error.log ]; then echo "FEHLER  data/error.log:"; cat data/error.log; FAIL=1; fi

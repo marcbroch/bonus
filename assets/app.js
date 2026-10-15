@@ -45,8 +45,9 @@
     if (cv && !calm) {
       const ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
       const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
-      const colors = document.body.classList.contains('skin-halloween')
-        ? ['#ff7a00', '#ff9a1f', '#8a3ffc', '#b06cff', '#7ed321', '#2b1a3d', '#ffd23f']
+      const cl = document.body.classList;
+      const colors = cl.contains('skin-halloween') ? ['#ff7a00', '#ff9a1f', '#8a3ffc', '#b06cff', '#7ed321', '#2b1a3d', '#ffd23f']
+        : cl.contains('skin-weihnachten') ? ['#e3263a', '#2e9e4f', '#f2b705', '#ffffff', '#ffd84d', '#c41e3a', '#7fd1ff']
         : ['#ff4f6d', '#ff8a1f', '#ffd23f', '#3cbf5b', '#2f9be0', '#9b5de5', '#ff5fa2'];
       const bits = Array.from({ length: 140 }, () => ({
         x: Math.random() * W, y: -Math.random() * H * .6, w: (6 + Math.random() * 6) * dpr, h: (9 + Math.random() * 8) * dpr,
