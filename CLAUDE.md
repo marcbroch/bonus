@@ -31,7 +31,9 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
   zusätzlich `assets/skin-<name>.css` und setzt `class="skin-<name>"` am `<body>`.
   Zum lokalen Testen: `BONUS_SKIN=halloween`, `BONUS_SKIN=weihnachten` bzw.
   `BONUS_SKIN=normal`. 2026: Halloween bis 1.11. (mit Startbildschirm-Motiven),
-  Weihnachten 30.11.–26.12. (ohne Startbildschirm).
+  Weihnachten 30.11.–26.12. (ohne Startbildschirm), Silvester 27.12.2026–1.1.2027
+  (Feuerwerk-Startbild nur am `NEW_YEAR_SPLASH`-Tag 1.1.2027). Datum zum Testen:
+  `BONUS_TODAY=2027-01-01` (Funktion `today()`).
 - Alle Links müssen **relativ** bleiben (z. B. `index.php?p=home`), weil die
   App im Unterordner `/bonus` läuft.
 - Bei Änderungen an CSS oder JS die Versionsnummer `?v=` in `lib.php`

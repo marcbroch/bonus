@@ -16,13 +16,15 @@
     } catch (e) { return file; }
   }
 
-  // Halloween-Startbildschirm: nur beim Öffnen der App (einmal pro Sitzung), verschwindet nach 3 Sekunden
+  // Startbildschirm (Halloween, Neujahr): nur beim Öffnen der App (einmal pro Sitzung), verschwindet nach 3 Sekunden
   const splash = document.querySelector('.js-splash');
   if (splash) {
     let seen = false;
-    try { seen = sessionStorage.getItem('hwSplash') === '1'; sessionStorage.setItem('hwSplash', '1'); } catch (e) {}
+    const key = 'splash-' + (splash.dataset.key || 'hw');
+    try { seen = sessionStorage.getItem(key) === '1'; sessionStorage.setItem(key, '1'); } catch (e) {}
     if (!seen) {
       splash.hidden = false;
+      if (splash.dataset.fireworks) fireworks(splash.querySelector('canvas'));
       let gone = false;
       const hide = () => {
         if (gone) return; gone = true;
@@ -32,6 +34,44 @@
       splash.addEventListener('click', hide);
       setTimeout(hide, 3000);
     }
+  }
+
+  // Feuerwerk für den Neujahrs-Startbildschirm: Raketen steigen auf und zerplatzen in bunte Funken
+  function fireworks(cv) {
+    if (!cv || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+    const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+    const colors = ['#f5c542', '#ff3ea5', '#29d3ff', '#9a6bff', '#7ed321', '#ffffff'];
+    const rockets = [], sparks = [], start = performance.now();
+    let next = 0;
+    const tick = now => {
+      const t = now - start;
+      if (t > next && t < 2600) {
+        rockets.push({ x: W * (.15 + Math.random() * .7), y: H, vy: -(H / 75) * (.8 + Math.random() * .3), top: H * (.15 + Math.random() * .3),
+          c: colors[Math.floor(Math.random() * colors.length)] });
+        next = t + 260 + Math.random() * 260;
+      }
+      ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const r = rockets[i]; r.y += r.vy;
+        ctx.fillStyle = r.c; ctx.beginPath(); ctx.arc(r.x, r.y, 2.5 * dpr, 0, 7); ctx.fill();
+        if (r.y <= r.top) {
+          rockets.splice(i, 1);
+          for (let k = 0; k < 46; k++) {
+            const a = Math.PI * 2 * k / 46, v = (2 + Math.random() * 2.5) * dpr;
+            sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: Math.random() < .2 ? '#ffffff' : r.c });
+          }
+        }
+      }
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const p = sparks[i]; p.x += p.vx; p.y += p.vy; p.vy += .05 * dpr; p.vx *= .985; p.life -= .016;
+        if (p.life <= 0) { sparks.splice(i, 1); continue; }
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2 * dpr, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      if (t < 3600) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   }
 
   // Konfetti-Moment: Karte zeigen, Konfetti regnen lassen, mit "Juhu!" schließen
@@ -47,6 +87,7 @@
       const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
       const cl = document.body.classList;
       const colors = cl.contains('skin-halloween') ? ['#ff7a00', '#ff9a1f', '#8a3ffc', '#b06cff', '#7ed321', '#2b1a3d', '#ffd23f']
+        : cl.contains('skin-silvester') ? ['#f5c542', '#ff3ea5', '#29d3ff', '#9a6bff', '#ffffff', '#cfd8e3', '#7ed321']
         : cl.contains('skin-weihnachten') ? ['#e3263a', '#2e9e4f', '#f2b705', '#ffffff', '#ffd84d', '#c41e3a', '#7fd1ff']
         : ['#ff4f6d', '#ff8a1f', '#ffd23f', '#3cbf5b', '#2f9be0', '#9b5de5', '#ff5fa2'];
       const bits = Array.from({ length: 140 }, () => ({
