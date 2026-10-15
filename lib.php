@@ -574,14 +574,19 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
-<meta name="theme-color" content="#5ec4f2">
+<?php $skin = active_skin(); ?>
+<meta name="theme-color" content="<?= $skin === 'halloween' ? '#1b1035' : '#5ec4f2' ?>">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css?v=10">
+<?php if ($skin): ?><link rel="stylesheet" href="assets/skin-<?= h($skin) ?>.css?v=1"><?php endif; ?>
 </head>
-<body>
+<body<?= $skin ? ' class="skin-' . h($skin) . '"' : '' ?>>
+<?php if ($skin === 'halloween'): ?>
+<div class="hw-deco" aria-hidden="true"><span class="bat b1">🦇</span><span class="bat b2">🦇</span><span class="bat b3">🦇</span><span class="ghost">👻</span></div>
+<?php endif; ?>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
-    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus</span></span></a>
+    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus<?= $skin === 'halloween' ? ' 🎃' : '' ?></span></span></a>
   <?php if ($user): ?>
     <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
@@ -611,7 +616,7 @@ function page_header(string $title, ?array $user = null): void {
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=7"></script>
+<script src="assets/app.js?v=8"></script>
 </body>
 </html>
 <?php
@@ -624,11 +629,36 @@ function shade(string $hex, float $f): string {
     return vsprintf('#%02x%02x%02x', $rgb);
 }
 
+// ---------- Saison-Designs ("Skins") ----------
+// Jeder Skin gilt vom ersten Tag (einschließlich) bis zum letzten Tag (ausschließlich).
+// Die App schaltet nur anhand des Datums um – kein Upload nötig.
+const SKINS = [
+    ['halloween', '2026-10-01', '2026-11-02'],   // bis einschließlich 1.11.2026
+];
+
+// Aktiver Skin ('' = normales Design). Zum Testen: Umgebungsvariable BONUS_SKIN=halloween bzw. =normal
+function active_skin(?string $today = null): string {
+    $force = (string)getenv('BONUS_SKIN');
+    if ($today === null && $force !== '') return $force === 'normal' ? '' : $force;
+    $today = $today ?? date('Y-m-d');
+    foreach (SKINS as [$name, $from, $until]) {
+        if ($today >= $from && $today < $until) return $name;
+    }
+    return '';
+}
+
 // Schriftzug wie im Titelbild: dicke Comic-Buchstaben im Bogen, jeder in eigener Farbe,
 // mit Glanzlicht, dunkler Kante, 3D-Unterkante und Sternchen drumherum
 function brand_logo(): string {
     $letters = [['B', '#ff4fa0'], ['R', '#ff6a2b'], ['O', '#ffb21f'], ['C', '#7cc83a'], ['H', '#22b5e6'],
                 ['H', '#a65fe8'], ['A', '#ff8a24'], ['U', '#1fc4b0'], ['S', '#2f8fe6']];
+    $starColors = ['#ffd23f', '#ff5fa2', '#7cc6f2', '#9b5de5', '#3cbf5b'];
+    if (active_skin() === 'halloween') {
+        // Kürbis-Orange, Hexen-Lila und Schleim-Grün
+        $letters = [['B', '#ff7a00'], ['R', '#9b4dff'], ['O', '#7ed321'], ['C', '#ff7a00'], ['H', '#9b4dff'],
+                    ['H', '#7ed321'], ['A', '#ff7a00'], ['U', '#9b4dff'], ['S', '#7ed321']];
+        $starColors = ['#ff9a1f', '#b06cff', '#ffd23f', '#7ed321', '#ff9a1f'];
+    }
     $defs = $fill = $back = '';
     foreach ($letters as $i => [$ch, $c]) {
         $defs .= '<linearGradient id="lg' . $i . '" x1="0" y1="0" x2="0" y2="1">'
@@ -654,7 +684,7 @@ function brand_logo(): string {
         . '<defs>' . $defs . '<path id="arc" d="' . $path . '"/>'
         . '<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset=".08" stop-color="#fff" stop-opacity=".95"/>'
         . '<stop offset=".34" stop-color="#fff" stop-opacity=".35"/><stop offset=".46" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
-        . $star(24, 40, 12, '#ffd23f') . $star(476, 44, 11, '#ff5fa2') . $star(120, 18, 9, '#7cc6f2') . $star(318, 134, 8, '#9b5de5') . $star(392, 128, 8, '#3cbf5b')
+        . $star(24, 40, 12, $starColors[0]) . $star(476, 44, 11, $starColors[1]) . $star(120, 18, 9, $starColors[2]) . $star(318, 134, 8, $starColors[3]) . $star(392, 128, 8, $starColors[4])
         . $sparkle(64, 14, 9) . $sparkle(392, 16, 9) . $sparkle(250, 134, 6)
         // 3D-Unterkante
         . '<text ' . $txt . ' stroke-width="8" transform="translate(0 6)"><textPath href="#arc" startOffset="50%">' . $back . '</textPath></text>'

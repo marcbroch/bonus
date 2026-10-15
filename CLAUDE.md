@@ -26,6 +26,10 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
   Kinder-Seiten, `pages_admin.php` die Eltern-Seiten, `photo.php` liefert
   Fotos nur nach Anmeldung aus. `badges.php` berechnet die Sticker (Sammelalbum)
   aus den vorhandenen Daten und zeigt den Konfetti-Moment (Spalte `users.seen_at`).
+- Saison-Designs („Skins“): `SKINS` in `lib.php` legt Name, ersten Tag und Endtag
+  (ausschließlich) fest; `active_skin()` wählt nach Datum. Ein aktiver Skin lädt
+  zusätzlich `assets/skin-<name>.css` und setzt `class="skin-<name>"` am `<body>`.
+  Zum lokalen Testen: `BONUS_SKIN=halloween` bzw. `BONUS_SKIN=normal`.
 - Alle Links müssen **relativ** bleiben (z. B. `index.php?p=home`), weil die
   App im Unterordner `/bonus` läuft.
 - Bei Änderungen an CSS oder JS die Versionsnummer `?v=` in `lib.php`
