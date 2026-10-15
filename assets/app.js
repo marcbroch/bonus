@@ -16,6 +16,24 @@
     } catch (e) { return file; }
   }
 
+  // Halloween-Startbildschirm: nur beim Öffnen der App (einmal pro Sitzung), verschwindet nach 3 Sekunden
+  const splash = document.querySelector('.js-splash');
+  if (splash) {
+    let seen = false;
+    try { seen = sessionStorage.getItem('hwSplash') === '1'; sessionStorage.setItem('hwSplash', '1'); } catch (e) {}
+    if (!seen) {
+      splash.hidden = false;
+      let gone = false;
+      const hide = () => {
+        if (gone) return; gone = true;
+        splash.classList.add('out');
+        setTimeout(() => { splash.hidden = true; }, 500);
+      };
+      splash.addEventListener('click', hide);
+      setTimeout(hide, 3000);
+    }
+  }
+
   // Konfetti-Moment: Karte zeigen, Konfetti regnen lassen, mit "Juhu!" schließen
   const cel = document.querySelector('.js-celebrate');
   if (cel) {

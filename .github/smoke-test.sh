@@ -106,6 +106,7 @@ SKINS=$(php -r 'require "lib.php"; foreach (["2026-10-15","2026-11-01","2026-11-
 if [ "$SKINS" = "halloween halloween normal normal " ]; then echo "ok      Halloween-Design endet am 2.11.2026"; else echo "FEHLER  Datumsumschaltung: $SKINS"; FAIL=1; fi
 if [ "$(php -r 'require "lib.php"; echo active_skin();')" = "halloween" ]; then
   grep -q "skin-halloween" <(curl -s -b "$K" "$BASE?p=home") && echo "ok      Halloween-Design wird angezeigt" || { echo "FEHLER  Halloween-Design fehlt"; FAIL=1; }
+  grep -qE 'js-splash.*|assets/halloween/motiv[1-5]\.svg' <(curl -s "$BASE?p=login") && [ -s assets/halloween/motiv5.svg ] && echo "ok      Halloween-Startbildschirm" || { echo "FEHLER  Halloween-Startbildschirm fehlt"; FAIL=1; }
 else
   grep -q "skin-halloween" <(curl -s -b "$K" "$BASE?p=home") && { echo "FEHLER  Halloween-Design wird nach dem 1.11. noch angezeigt"; FAIL=1; } || echo "ok      Normales Design"
 fi

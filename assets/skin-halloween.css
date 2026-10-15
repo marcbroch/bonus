@@ -81,3 +81,20 @@ body.skin-halloween .flash.err::before { content: "👻 "; }
 body.skin-halloween .bar span, body.skin-halloween .stprog span { background: linear-gradient(90deg, #ff9a1f, #8a3ffc); }
 body.skin-halloween .cel-card { border-color: #ff9a1f; box-shadow: 0 8px 0 #a8460a, 0 18px 40px rgba(0, 0, 0, .45); }
 body.skin-halloween .celebrate { background: rgba(23, 12, 46, .6); }
+
+/* Startbildschirm mit Halloween-Motiv (3 Sekunden beim Öffnen) */
+.hw-splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: radial-gradient(circle at 50% 40%, #4a2380 0, #170c2e 75%); cursor: pointer; }
+.hw-splash[hidden] { display: none; }
+.hw-splash.out { opacity: 0; transition: opacity .5s ease-in; }
+.hw-splash-inner { text-align: center; max-width: 340px; width: 100%; }
+.hw-splash img { width: min(78vw, 300px); height: auto; display: block; margin: 0 auto;
+  filter: drop-shadow(0 10px 24px rgba(255, 122, 0, .35)); animation: hw-pop .7s cubic-bezier(.2, 1.6, .4, 1), hw-wobble 2.4s ease-in-out .7s infinite; }
+.hw-splash p { margin: 1.1rem 0 1rem; font-size: 1.6rem; font-weight: 700; line-height: 1.2; color: #ffe9c7;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, .45); animation: hw-pop .7s cubic-bezier(.2, 1.6, .4, 1) .15s both; }
+.hw-timer { width: 60%; height: 8px; margin: 0 auto; border-radius: 99px; background: rgba(255, 255, 255, .15); overflow: hidden; }
+.hw-timer span { display: block; height: 100%; width: 100%; border-radius: 99px; background: linear-gradient(90deg, #ff9a1f, #8a3ffc);
+  transform-origin: left; animation: hw-timer 3s linear forwards; }
+@keyframes hw-pop { from { transform: scale(.4) rotate(-8deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes hw-wobble { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(-6px); } }
+@keyframes hw-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
