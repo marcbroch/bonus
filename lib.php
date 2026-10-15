@@ -575,7 +575,7 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="<?= APP_NAME ?>">
 <?php $skin = active_skin(); ?>
-<meta name="theme-color" content="<?= ['halloween' => '#1b1035', 'weihnachten' => '#16325c'][$skin] ?? '#5ec4f2' ?>">
+<meta name="theme-color" content="<?= ['halloween' => '#1b1035', 'weihnachten' => '#16325c', 'silvester' => '#120a2e'][$skin] ?? '#5ec4f2' ?>">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css?v=10">
 <?php if ($skin): ?><link rel="stylesheet" href="assets/skin-<?= h($skin) ?>.css?v=2"><?php endif; ?>
@@ -583,6 +583,20 @@ function page_header(string $title, ?array $user = null): void {
 <body<?= $skin ? ' class="skin-' . h($skin) . '"' : '' ?>>
 <?php if ($skin === 'weihnachten'): ?>
 <div class="xm-snow" aria-hidden="true"><?php for ($i = 1; $i <= 14; $i++): ?><span class="f<?= $i ?>">❄</span><?php endfor; ?></div>
+<?php endif; ?>
+<?php if ($skin === 'silvester'): ?>
+<div class="ny-deco" aria-hidden="true"><?php for ($i = 1; $i <= 6; $i++): ?><span class="fw fw<?= $i ?>"></span><?php endfor; ?></div>
+<?php if (is_new_year_day()): $year = substr(today(), 0, 4); ?>
+<div class="hw-splash ny-splash js-splash" data-key="ny<?= h($year) ?>" data-fireworks="1" hidden role="dialog" aria-label="Frohes neues Jahr <?= h($year) ?>!">
+  <canvas class="ny-canvas" aria-hidden="true"></canvas>
+  <div class="hw-splash-inner">
+    <img src="assets/silvester/neujahr.svg?v=1" alt="">
+    <p class="ny-year"><?= h($year) ?></p>
+    <p>Frohes neues Jahr! 🎉</p>
+    <div class="hw-timer"><span></span></div>
+  </div>
+</div>
+<?php endif; ?>
 <?php endif; ?>
 <?php if ($skin === 'halloween'): ?>
 <div class="hw-deco" aria-hidden="true"><span class="bat b1">🦇</span><span class="bat b2">🦇</span><span class="bat b3">🦇</span><span class="ghost">👻</span></div>
@@ -592,7 +606,7 @@ function page_header(string $title, ?array $user = null): void {
                4 => 'Fleißige Fledermäuse sammeln Punkte!', 5 => 'Süßes oder Saures? 🍬'];
     $m = random_int(1, 5);
 ?>
-<div class="hw-splash js-splash" hidden role="dialog" aria-label="<?= h($motifs[$m]) ?>">
+<div class="hw-splash js-splash" data-key="halloween" hidden role="dialog" aria-label="<?= h($motifs[$m]) ?>">
   <div class="hw-splash-inner">
     <img src="assets/halloween/motiv<?= $m ?>.svg?v=1" alt="">
     <p><?= h($motifs[$m]) ?></p>
@@ -602,7 +616,7 @@ function page_header(string $title, ?array $user = null): void {
 <?php endif; ?>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
-    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus<?= ['halloween' => ' 🎃', 'weihnachten' => ' 🎄'][$skin] ?? '' ?></span></span></a>
+    <span class="logo"><?= brand_logo() ?><span class="sub">Bonus<?= ['halloween' => ' 🎃', 'weihnachten' => ' 🎄', 'silvester' => ' 🥳'][$skin] ?? '' ?></span></span></a>
   <?php if ($user): ?>
     <span class="who"><?= h($user['name']) ?> · <a href="index.php?p=password" title="Passwort ändern">🔑 Passwort</a> · <a href="index.php?p=logout">Abmelden</a></span>
   <?php endif; ?>
@@ -632,7 +646,7 @@ function page_header(string $title, ?array $user = null): void {
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=10"></script>
+<script src="assets/app.js?v=11"></script>
 </body>
 </html>
 <?php
@@ -646,22 +660,37 @@ function shade(string $hex, float $f): string {
 }
 
 // ---------- Saison-Designs ("Skins") ----------
-// Jeder Skin gilt vom ersten Tag (einschließlich) bis zum letzten Tag (ausschließlich).
+// Jedes Jahr wiederkehrend: Tag und Monat (MM-TT) vom ersten Tag (einschließlich)
+// bis zum Endtag (ausschließlich). Liegt der Endtag im neuen Jahr, gilt der Zeitraum über den Jahreswechsel.
 // Die App schaltet nur anhand des Datums um – kein Upload nötig.
 const SKINS = [
-    ['halloween', '2026-10-01', '2026-11-02'],   // bis einschließlich 1.11.2026
-    ['weihnachten', '2026-11-30', '2026-12-27'], // 30.11. bis einschließlich 26.12.2026
+    ['halloween', '10-01', '11-02'],   // 1.10. bis einschließlich 1.11.
+    ['weihnachten', '11-30', '12-27'], // 30.11. bis einschließlich 26.12.
+    ['silvester', '12-27', '01-02'],   // 27.12. bis einschließlich 1.1. (über den Jahreswechsel)
 ];
+const NEW_YEAR_SPLASH = '01-01';       // jedes Jahr am 1.1.: Feuerwerk-Startbild
+
+// Heutiges Datum; zum Testen per Umgebungsvariable BONUS_TODAY=JJJJ-MM-TT überschreibbar
+function today(): string {
+    $t = (string)getenv('BONUS_TODAY');
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $t) ? $t : date('Y-m-d');
+}
 
 // Aktiver Skin ('' = normales Design). Zum Testen: Umgebungsvariable BONUS_SKIN=halloween bzw. =normal
 function active_skin(?string $today = null): string {
     $force = (string)getenv('BONUS_SKIN');
     if ($today === null && $force !== '') return $force === 'normal' ? '' : $force;
-    $today = $today ?? date('Y-m-d');
+    $md = substr($today ?? today(), 5, 5);   // "MM-TT"
     foreach (SKINS as [$name, $from, $until]) {
-        if ($today >= $from && $today < $until) return $name;
+        $hit = $from <= $until ? ($md >= $from && $md < $until) : ($md >= $from || $md < $until);
+        if ($hit) return $name;
     }
     return '';
+}
+
+// Neujahrstag (jedes Jahr am 1.1.)?
+function is_new_year_day(?string $today = null): bool {
+    return substr($today ?? today(), 5, 5) === NEW_YEAR_SPLASH;
 }
 
 // Schriftzug wie im Titelbild: dicke Comic-Buchstaben im Bogen, jeder in eigener Farbe,
@@ -680,6 +709,11 @@ function brand_logo(): string {
         $letters = [['B', '#e3263a'], ['R', '#2e9e4f'], ['O', '#f2b705'], ['C', '#e3263a'], ['H', '#2e9e4f'],
                     ['H', '#f2b705'], ['A', '#e3263a'], ['U', '#2e9e4f'], ['S', '#f2b705']];
         $starColors = ['#ffd84d', '#ffffff', '#ffd84d', '#ffffff', '#ffd84d'];
+    } elseif (active_skin() === 'silvester') {
+        // Gold, Pink, Türkis und Lila wie Feuerwerk
+        $letters = [['B', '#f5c542'], ['R', '#ff3ea5'], ['O', '#29d3ff'], ['C', '#9a6bff'], ['H', '#f5c542'],
+                    ['H', '#ff3ea5'], ['A', '#29d3ff'], ['U', '#9a6bff'], ['S', '#f5c542']];
+        $starColors = ['#f5c542', '#ff3ea5', '#29d3ff', '#ffffff', '#f5c542'];
     }
     $defs = $fill = $back = '';
     foreach ($letters as $i => [$ch, $c]) {

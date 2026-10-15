@@ -101,9 +101,9 @@ get "$K2" "p=rewards"
 grep -q "Eingelöst" "$TMP/page" && grep -q "davon <b>25</b> für Geld nutzbar" "$TMP/page" && echo "ok      Andere Belohnung nutzt zuerst Nicht-Geld-Punkte" \
   || { echo "FEHLER  Bildschirmzeit hat Geld-Punkte verbraucht"; FAIL=1; }
 
-# Saison-Designs: Halloween bis 1.11.2026, Weihnachten 30.11.–26.12.2026, sonst normal
-SKINS=$(php -r 'require "lib.php"; foreach (["2026-10-15","2026-11-01","2026-11-02","2026-11-29","2026-11-30","2026-12-26","2026-12-27"] as $d) echo (active_skin($d) ?: "normal"), " ";')
-if [ "$SKINS" = "halloween halloween normal normal weihnachten weihnachten normal " ]; then echo "ok      Datumsumschaltung der Saison-Designs"; else echo "FEHLER  Datumsumschaltung: $SKINS"; FAIL=1; fi
+# Saison-Designs jedes Jahr: Halloween 1.10.–1.11., Weihnachten 30.11.–26.12., Silvester 27.12.–1.1., sonst normal
+SKINS=$(php -r 'require "lib.php"; foreach (["2026-10-15","2027-09-30","2027-10-01","2027-11-01","2027-11-02","2028-11-29","2028-11-30","2028-12-26","2028-12-27","2029-01-01","2029-01-02","2030-06-15"] as $d) echo (active_skin($d) ?: "normal"), " ";')
+if [ "$SKINS" = "halloween normal halloween halloween normal normal weihnachten weihnachten silvester silvester normal normal " ]; then echo "ok      Datumsumschaltung der Saison-Designs"; else echo "FEHLER  Datumsumschaltung: $SKINS"; FAIL=1; fi
 SKIN=$(php -r 'require "lib.php"; echo active_skin();')
 PAGE=$(curl -s -b "$K" "$BASE?p=home")
 if [ -n "$SKIN" ]; then
@@ -111,11 +111,17 @@ if [ -n "$SKIN" ]; then
 else
   grep -q "skin-" <<<"$PAGE" && { echo "FEHLER  Saison-Design außerhalb des Zeitraums"; FAIL=1; } || echo "ok      Normales Design"
 fi
+# Startbildschirm nur an Halloween und am Neujahrstag (mit der richtigen Jahreszahl)
 LOGIN=$(curl -s "$BASE?p=login")
-if [ "$SKIN" = "halloween" ]; then
-  grep -q 'js-splash' <<<"$LOGIN" && [ -s assets/halloween/motiv5.svg ] && echo "ok      Halloween-Startbildschirm" || { echo "FEHLER  Halloween-Startbildschirm fehlt"; FAIL=1; }
+SPLASH=$(php -r 'require "lib.php"; $s = active_skin(); echo ($s === "halloween" || ($s === "silvester" && is_new_year_day())) ? "ja" : "nein";')
+if [ "$SPLASH" = "ja" ]; then
+  grep -q 'js-splash' <<<"$LOGIN" && [ -s assets/halloween/motiv5.svg ] && [ -s assets/silvester/neujahr.svg ] && echo "ok      Startbildschirm ($SKIN)" || { echo "FEHLER  Startbildschirm fehlt"; FAIL=1; }
+  if [ "$SKIN" = "silvester" ]; then
+    YEAR=$(php -r 'require "lib.php"; echo substr(today(), 0, 4);')
+    grep -q "class=\"ny-year\">$YEAR<" <<<"$LOGIN" && echo "ok      Neujahrsbild zeigt $YEAR" || { echo "FEHLER  Jahreszahl im Neujahrsbild"; FAIL=1; }
+  fi
 else
-  grep -q 'js-splash' <<<"$LOGIN" && { echo "FEHLER  Startbildschirm außerhalb von Halloween"; FAIL=1; } || echo "ok      Kein Startbildschirm"
+  grep -q 'js-splash' <<<"$LOGIN" && { echo "FEHLER  Startbildschirm, obwohl keiner vorgesehen ist"; FAIL=1; } || echo "ok      Kein Startbildschirm"
 fi
 
 if [ -s data/error.log ]; then echo "FEHLER  data/error.log:"; cat data/error.log; FAIL=1; fi

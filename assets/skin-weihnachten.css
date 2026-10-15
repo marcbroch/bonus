@@ -1,4 +1,4 @@
-/* Weihnachts-Skin – wird nur geladen, solange active_skin() "weihnachten" liefert (30.11. bis 26.12.2026) */
+/* Weihnachts-Skin – wird nur geladen, solange active_skin() "weihnachten" liefert (jedes Jahr 30.11. bis 26.12.) */
 body.skin-weihnachten {
   --sky-top: #16325c; --sky-bottom: #2f5a96; --grass: #f4f9ff; --grass-dark: #d6e6f7;
   --sun: #ffd84d; --sun-dark: #c98a00;
