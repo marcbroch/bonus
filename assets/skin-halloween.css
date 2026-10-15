@@ -1,4 +1,4 @@
-/* Halloween-Skin – wird nur geladen, solange active_skin() "halloween" liefert (bis 1.11.2026) */
+/* Halloween-Skin – wird nur geladen, solange active_skin() "halloween" liefert (jedes Jahr 1.10. bis 1.11.) */
 body.skin-halloween {
   --sky-top: #170c2e; --sky-bottom: #3a1d5c; --grass: #2d1f3f; --grass-dark: #170f22;
   --sun: #ffb347; --sun-dark: #d96a00;

@@ -1,4 +1,4 @@
-/* Silvester-Skin – wird nur geladen, solange active_skin() "silvester" liefert (27.12.2026 bis 1.1.2027) */
+/* Silvester-Skin – wird nur geladen, solange active_skin() "silvester" liefert (jedes Jahr 27.12. bis 1.1.) */
 body.skin-silvester {
   --sky-top: #120a2e; --sky-bottom: #2b1d66; --grass: #241a4f; --grass-dark: #140d33;
   --sun: #f5c542; --sun-dark: #b8860b;
@@ -77,7 +77,7 @@ body.skin-silvester .bar span, body.skin-silvester .stprog span { background: li
 body.skin-silvester .cel-card { border-color: #f5c542; box-shadow: 0 8px 0 #9a6b00, 0 18px 40px rgba(0, 0, 0, .45); }
 body.skin-silvester .celebrate { background: rgba(18, 10, 46, .6); }
 
-/* Startbildschirm (gleiches Verhalten wie an Halloween), hier für das Neujahrs-Feuerwerk am 1.1.2027 */
+/* Startbildschirm (gleiches Verhalten wie an Halloween), hier für das Neujahrs-Feuerwerk am 1.1. */
 .hw-splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
   background: radial-gradient(circle at 50% 40%, #4a2380 0, #170c2e 75%); cursor: pointer; }
 .hw-splash[hidden] { display: none; }

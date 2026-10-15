@@ -26,14 +26,14 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
   Kinder-Seiten, `pages_admin.php` die Eltern-Seiten, `photo.php` liefert
   Fotos nur nach Anmeldung aus. `badges.php` berechnet die Sticker (Sammelalbum)
   aus den vorhandenen Daten und zeigt den Konfetti-Moment (Spalte `users.seen_at`).
-- Saison-Designs („Skins“): `SKINS` in `lib.php` legt Name, ersten Tag und Endtag
-  (ausschließlich) fest; `active_skin()` wählt nach Datum. Ein aktiver Skin lädt
-  zusätzlich `assets/skin-<name>.css` und setzt `class="skin-<name>"` am `<body>`.
-  Zum lokalen Testen: `BONUS_SKIN=halloween`, `BONUS_SKIN=weihnachten` bzw.
-  `BONUS_SKIN=normal`. 2026: Halloween bis 1.11. (mit Startbildschirm-Motiven),
-  Weihnachten 30.11.–26.12. (ohne Startbildschirm), Silvester 27.12.2026–1.1.2027
-  (Feuerwerk-Startbild nur am `NEW_YEAR_SPLASH`-Tag 1.1.2027). Datum zum Testen:
-  `BONUS_TODAY=2027-01-01` (Funktion `today()`).
+- Saison-Designs („Skins“), **jedes Jahr wiederkehrend**: `SKINS` in `lib.php` legt
+  Name, ersten Tag und Endtag (ausschließlich) als `MM-TT` fest; ein Endtag vor dem
+  Starttag gilt über den Jahreswechsel. `active_skin()` wählt nach Datum. Ein aktiver
+  Skin lädt zusätzlich `assets/skin-<name>.css` und setzt `class="skin-<name>"` am
+  `<body>`. Halloween 10-01–11-02 (mit Startbild-Motiven), Weihnachten 11-30–12-27
+  (ohne Startbild), Silvester 12-27–01-02 (Feuerwerk-Startbild nur am 1.1., Jahreszahl
+  aus dem Datum, `is_new_year_day()`). Zum Testen: `BONUS_SKIN=halloween|weihnachten|
+  silvester|normal` erzwingt ein Design, `BONUS_TODAY=JJJJ-MM-TT` ein Datum (`today()`).
 - Alle Links müssen **relativ** bleiben (z. B. `index.php?p=home`), weil die
   App im Unterordner `/bonus` läuft.
 - Bei Änderungen an CSS oder JS die Versionsnummer `?v=` in `lib.php`
