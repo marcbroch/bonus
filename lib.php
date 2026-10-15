@@ -578,11 +578,24 @@ function page_header(string $title, ?array $user = null): void {
 <meta name="theme-color" content="<?= $skin === 'halloween' ? '#1b1035' : '#5ec4f2' ?>">
 <link rel="preload" href="assets/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css?v=10">
-<?php if ($skin): ?><link rel="stylesheet" href="assets/skin-<?= h($skin) ?>.css?v=1"><?php endif; ?>
+<?php if ($skin): ?><link rel="stylesheet" href="assets/skin-<?= h($skin) ?>.css?v=2"><?php endif; ?>
 </head>
 <body<?= $skin ? ' class="skin-' . h($skin) . '"' : '' ?>>
 <?php if ($skin === 'halloween'): ?>
 <div class="hw-deco" aria-hidden="true"><span class="bat b1">🦇</span><span class="bat b2">🦇</span><span class="bat b3">🦇</span><span class="ghost">👻</span></div>
+<?php
+    // Startbildschirm: eins von 5 Motiven zufällig, das Skript zeigt es nur beim Öffnen der App (3 Sekunden)
+    $motifs = [1 => 'Happy Halloween! 🎃', 2 => 'Buuuh! Schon heute geholfen?', 3 => 'Hex, hex – ab an die Aufgaben!',
+               4 => 'Fleißige Fledermäuse sammeln Punkte!', 5 => 'Süßes oder Saures? 🍬'];
+    $m = random_int(1, 5);
+?>
+<div class="hw-splash js-splash" hidden role="dialog" aria-label="<?= h($motifs[$m]) ?>">
+  <div class="hw-splash-inner">
+    <img src="assets/halloween/motiv<?= $m ?>.svg?v=1" alt="">
+    <p><?= h($motifs[$m]) ?></p>
+    <div class="hw-timer"><span></span></div>
+  </div>
+</div>
 <?php endif; ?>
 <header class="top">
   <a class="brand" href="index.php" aria-label="<?= APP_NAME ?>"><img src="assets/icon-192.png" alt="">
@@ -616,7 +629,7 @@ function page_header(string $title, ?array $user = null): void {
 function page_footer(): void {
     ?>
 </main>
-<script src="assets/app.js?v=8"></script>
+<script src="assets/app.js?v=9"></script>
 </body>
 </html>
 <?php

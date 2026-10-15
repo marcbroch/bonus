@@ -58,7 +58,9 @@ Folge). Alle Sticker stehen im Sammelalbum unter "Mein Konto" – mit
 Fortschritt, wie viel noch fehlt. Es zählen nur bestätigte Aufgaben.
 
 Saison-Designs: Bis einschließlich 1.11.2026 zeigt die App ein
-Halloween-Design (Nachthimmel, Mond, Fledermäuse, Kürbisse). Ab dem
+Halloween-Design (Nachthimmel, Mond, Fledermäuse, Kürbisse). Beim Öffnen
+der App erscheint für 3 Sekunden eins von 5 Halloween-Motiven (zufällig);
+antippen schließt es sofort. Ab dem
 2.11.2026 erscheint automatisch wieder das normale Design – dafür muss
 nichts hochgeladen werden.
 
