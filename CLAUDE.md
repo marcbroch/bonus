@@ -19,6 +19,9 @@ einfachem Deutsch, ohne Fachjargon. Die Texte in der App sind auf Deutsch.
 - `.github/smoke-test.sh` richtet die App ein, meldet sich als Eltern und Kind an
   und ruft alle Seiten auf. Die Workflows führen es mit PHP 8.4 und 7.4 aus;
   ohne grünen Test wird nicht hochgeladen.
+- Anmeldungen (PHP-Sitzungen) liegen in `data/sessions` (90 Tage, Cookie wird bei jedem
+  Besuch verlängert). Nicht in den Standardordner des Hosters zurückstellen: IONOS räumt den
+  gemeinsamen Sitzungsordner auf, dann sind alle ständig abgemeldet.
 - Fehler landen in `data/error.log` (von außen gesperrt). Der Upload-Workflow
   prüft danach die Live-Seite und zeigt neue Einträge aus diesem Protokoll.
 - `index.php` ist der Einstieg (Routing über `?p=...`). `lib.php` enthält
