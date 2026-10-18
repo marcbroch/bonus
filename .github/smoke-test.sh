@@ -4,9 +4,9 @@
 set -u
 cd "$(dirname "$0")/.."
 TMP=$(mktemp -d); PORT=8099; BASE="http://127.0.0.1:$PORT/index.php"
-rm -f data/bonus.sqlite data/error.log
+rm -rf data/bonus.sqlite data/error.log data/sessions
 php -d display_errors=1 -d error_reporting=-1 -S 127.0.0.1:$PORT >"$TMP/server.log" 2>&1 &
-SERVER=$!; trap 'kill $SERVER 2>/dev/null; rm -f data/bonus.sqlite data/error.log' EXIT
+SERVER=$!; trap 'kill $SERVER 2>/dev/null; rm -rf data/bonus.sqlite data/error.log data/sessions' EXIT
 sleep 1
 FAIL=0
 csrf() { grep -o 'name="csrf" value="[a-f0-9]*"' "$1" | head -1 | sed 's/.*value="//; s/"//'; }
@@ -34,6 +34,10 @@ curl -s -c "$K" -o "$TMP/page" "$BASE?p=login"
 post "$K" "p=login" --data-urlencode "csrf=$(csrf "$TMP/page")" -d "uid=1" -d "password=bent123"
 for pg in "p=home" "p=home&w=-2" "p=submit" "p=submit&t=1" "p=rewards" "p=account"; do get "$K" "$pg"; done
 grep -q "Hallo Bent" <(curl -s -b "$K" "$BASE?p=home") || { echo "FEHLER  Kind-Anmeldung hat nicht geklappt"; FAIL=1; }
+# Anmeldung bleibt erhalten: Sitzung liegt in data/sessions, Cookie gilt 90 Tage
+if ls data/sessions/sess_* >/dev/null 2>&1 && grep -q "bbonus" "$K" && awk '$6=="bbonus" && $5>systime()+80*86400' "$K" | grep -q .; then
+  echo "ok      Anmeldung gespeichert (data/sessions, 90 Tage)"
+else echo "FEHLER  Anmeldung wird nicht dauerhaft gespeichert"; FAIL=1; fi
 get "$P" "p=password"
 
 # Konfetti-Moment und Sammelalbum: Eltern tragen eine Aufgabe ein, das Kind sieht danach die Karte

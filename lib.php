@@ -20,15 +20,27 @@ if (!function_exists('str_starts_with')) {
 // Lange Sitzung, damit die Kinder eingeloggt bleiben (90 Tage)
 $lifetime = 60 * 60 * 24 * 90;
 ini_set('session.gc_maxlifetime', (string)$lifetime);
-session_set_cookie_params([
+ini_set('session.gc_probability', '1');
+ini_set('session.gc_divisor', '100');
+// Anmeldungen im eigenen, von außen gesperrten Ordner data/sessions speichern: Der gemeinsame
+// Sitzungsordner des Webhosters wird nach kurzer Zeit aufgeräumt – dann wären alle abgemeldet.
+$sessDir = DATA_DIR . '/sessions';
+if (!is_dir($sessDir)) @mkdir($sessDir, 0700, true);
+if (is_dir($sessDir) && is_writable($sessDir)) session_save_path($sessDir);
+$cookie = [
     'lifetime' => $lifetime,
     'path' => '/',
     'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
     'httponly' => true,
     'samesite' => 'Lax',
-]);
+];
+session_set_cookie_params($cookie);
 session_name('bbonus');
 session_start();
+// Wer die App benutzt, bleibt angemeldet: Ablaufdatum des Cookies bei jedem Besuch erneuern
+if (!empty($_SESSION['uid']) && !headers_sent()) {
+    setcookie(session_name(), session_id(), ['expires' => time() + $lifetime] + array_diff_key($cookie, ['lifetime' => 1]));
+}
 
 function db(): PDO {
     static $pdo = null;
